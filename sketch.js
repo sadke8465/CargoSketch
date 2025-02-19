@@ -576,6 +576,8 @@ function setupMobile() {
 }
 
 function drawMobile() {
+    Engine.update(mobileEngine);
+
   if (mobileState === "ENABLE_MOTION") {
     background(...enableMotionBackgroundColor);
     // The HTML button is visible on top; you can optionally draw a faint circle behind it.
