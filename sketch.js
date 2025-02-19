@@ -52,7 +52,7 @@ const Composite = Matter.Composite;
 // --------------------------------------------------------------------------
 // GLOBAL VARIABLES FOR MODES
 // --------------------------------------------------------------------------
-let MOBILE_MODE = false; // will be set true if on mobile
+let MOBILE_MODE = false; // set true if on mobile
 
 // Matter.js engines/worlds
 let desktopEngine, desktopWorld;
@@ -133,15 +133,15 @@ let arrowEaseDuration = 0.5;
 // --------------------------------------------------------------------------
 
 // Styling for letter balls:
-let letterBallSize = 40;            // radius
-let letterBallTextSize = 32;        // text size
+let letterBallSize = 18;            // radius
+let letterBallTextSize = 14;        // text size
 let letterBallColor = [170];        // fill color
 let letterBallTextColor = [0];      // text color
 
 // Styling for final text circle:
-let textBallSize = 180;             // radius (and used for physics body size)
+let textBallSize = 110;             // radius (and used for physics body size)
 let textBallColor = [255];          // fill color
-let textBallTextSize = 20;          // text size
+let textBallTextSize = 14;          // text size
 let textBallTextColor = [0];        // text color
 
 // Styling for "Enable Motion" circle:
@@ -158,17 +158,15 @@ let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\n
 
 // Mobile state machine states:
 // "ENABLE_MOTION": Show the enable motion button.
-// "FADING_TO_TEXT": Fade transition.
 // "SHOW_TEXT_BALL": Final state; show final text circle and letter balls.
 let mobileState = "ENABLE_MOTION";
-let fadeDuration = 1.0; // seconds
-let fadeStartTime = 0;
+// (Fade state removed as transition is now immediate)
 let enableMotionAlpha = 255;
-let finalTextAlpha = 0;
+let finalTextAlpha = 255; // always full opacity now
 let bgColorFrom = [...enableMotionBackgroundColor];
 let bgColorTo = [...regularBackgroundColor];
 
-// Mobile letter balls (spawn after fade)
+// Mobile letter balls (spawn after transition)
 let mobileBalls = [];
 
 // We'll use an HTML button to request motion permission on iOS.
@@ -176,6 +174,9 @@ let permissionButton;
 
 // For gradual spawning of letter balls
 let mobileLettersToSpawn = [];
+
+// New global to track the rotation of the big center circle
+let mobileBigCircleAngle = 0;
 
 // --------------------------------------------------------------------------
 // p5.js SETUP & DRAW
@@ -523,7 +524,7 @@ class CenterArrowBall {
 }
 
 // ===========================================================================
-// MOBILE MODE FUNCTIONS (with DeviceMotion and Permission)
+// MOBILE MODE FUNCTIONS (with DeviceMotion, Permission, and your changes)
 // ===========================================================================
 function setupMobile() {
   // Create the canvas for mobile.
@@ -550,7 +551,7 @@ function setupMobile() {
   // Set initial mobile state.
   mobileState = "ENABLE_MOTION";
   enableMotionAlpha = 255;
-  finalTextAlpha = 0;
+  finalTextAlpha = 255;
   bgColorFrom = [...enableMotionBackgroundColor];
   bgColorTo = [...regularBackgroundColor];
   console.log("Mobile setup complete. State:", mobileState);
@@ -563,6 +564,8 @@ function setupMobile() {
     permissionButton.style('height', (textBallSize * 2) + 'px');
     permissionButton.style('background-color', color(enableMotionBallColor));
     permissionButton.style('color', color(enableMotionTextColor));
+    // Set the font to Geist UltraLight.
+    permissionButton.style("font-family", "Geist UltraLight");
     permissionButton.style('border', 'none');
     permissionButton.style('border-radius', '50%');
     permissionButton.style('font-size', textBallTextSize + 'px');
@@ -579,22 +582,7 @@ function drawMobile() {
   
   if (mobileState === "ENABLE_MOTION") {
     background(...enableMotionBackgroundColor);
-  } else if (mobileState === "FADING_TO_TEXT") {
-    let t = (millis() - fadeStartTime) / (fadeDuration * 1000);
-    if (t > 1) t = 1;
-    let r = lerp(bgColorFrom[0], bgColorTo[0], t);
-    let g = lerp(bgColorFrom[1], bgColorTo[1], t);
-    let b = lerp(bgColorFrom[2], bgColorTo[2], t);
-    background(r, g, b);
-    enableMotionAlpha = 255 * (1 - t);
-    finalTextAlpha = 255 * t;
-    drawEnableMotionCircle(enableMotionAlpha);
-    drawFinalTextCircle(finalTextAlpha);
-    if (t >= 1) {
-      mobileState = "SHOW_TEXT_BALL";
-      spawnAllMobileBalls();
-      console.log("Transition to SHOW_TEXT_BALL");
-    }
+    // The permission button remains visible.
   } else if (mobileState === "SHOW_TEXT_BALL") {
     background(...regularBackgroundColor);
     drawFinalTextCircle(255);
@@ -606,10 +594,9 @@ function drawMobile() {
 
 function mousePressedMobile() {
   if (mobileState === "ENABLE_MOTION") {
-    // Permission button handles motion permission.
+    // The HTML button handles permission.
     return;
   }
-  if (mobileState === "FADING_TO_TEXT") return;
   if (mobileState === "SHOW_TEXT_BALL") {
     let d = dist(mouseX, mouseY, width / 2, height / 2);
     if (d <= textBallSize) {
@@ -649,7 +636,7 @@ function requestMotionPermission() {
           if (permissionButton) {
             permissionButton.hide();
           }
-          startFadeToText();
+          startTransition();  // Instant transition without fade.
         } else {
           console.log("Device orientation permission denied.");
         }
@@ -658,50 +645,58 @@ function requestMotionPermission() {
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
     window.addEventListener("devicemotion", handleDeviceMotion, true);
-    startFadeToText();
+    startTransition();
   }
 }
 
-function startFadeToText() {
-  mobileState = "FADING_TO_TEXT";
-  fadeStartTime = millis();
-  bgColorFrom = [...enableMotionBackgroundColor];
-  bgColorTo = [...regularBackgroundColor];
-  console.log("Starting fade to text. State:", mobileState);
+// Instant transition without fade.
+function startTransition() {
+  mobileState = "SHOW_TEXT_BALL";
+  spawnAllMobileBalls();
+  console.log("Transition to SHOW_TEXT_BALL");
 }
 
 function drawEnableMotionCircle(alphaVal) {
   push();
+  translate(width / 2, height / 2);
+  rotate(mobileBigCircleAngle);
   fill(...enableMotionBallColor, alphaVal);
   noStroke();
-  ellipse(width / 2, height / 2, textBallSize * 2);
+  ellipse(0, 0, textBallSize * 2);
   fill(...enableMotionTextColor, alphaVal);
   textAlign(CENTER, CENTER);
   textSize(textBallTextSize);
-  text(enableMotionText, width / 2, height / 2);
+  text(enableMotionText, 0, 0);
   pop();
 }
 
 function drawFinalTextCircle(alphaVal) {
   push();
+  translate(width / 2, height / 2);
+  rotate(mobileBigCircleAngle);
   fill(...textBallColor, alphaVal);
   noStroke();
-  ellipse(width / 2, height / 2, textBallSize * 2);
+  ellipse(0, 0, textBallSize * 2);
   fill(...textBallTextColor, alphaVal);
   textAlign(CENTER, CENTER);
   textSize(textBallTextSize);
-  text(finalTextBallText, width / 2, height / 2);
+  text(finalTextBallText, 0, 0);
   pop();
 }
 
+// Handle device orientation: update gravity (stronger) and update the big circle's rotation.
 function handleDeviceOrientation(event) {
-  if (!event.beta || !event.gamma) return;
+  if (!event.beta || !event.gamma || !event.alpha) return;
   let gamma = event.gamma;
   let beta = event.beta;
-  mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.5, 0.5);
-  mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
+  // Map gravity more strongly.
+  mobileEngine.world.gravity.x = map(gamma, -90, 90, -1, 1);
+  mobileEngine.world.gravity.y = map(beta, -90, 90, -1, 1);
+  // Update the rotation angle using the device's alpha value.
+  mobileBigCircleAngle = radians(event.alpha);
 }
 
+// Handle device motion: apply extra forces on mobile balls when a shake/whip is detected.
 function handleDeviceMotion(event) {
   let acc = event.acceleration; // acceleration excluding gravity
   if (!acc) return;
@@ -775,7 +770,17 @@ class MobileLetterBall {
     fill(...letterBallTextColor);
     textAlign(CENTER, CENTER);
     textSize(letterBallTextSize);
-    text(this.letter, 0, 0);
+    // Move text upward a few pixels.
+    text(this.letter, 0, -this.r * 0.2);
     pop();
   }
+}
+
+// For desktop mode, the mousePressed function remains unchanged.
+function mousePressed() {
+  if (MOBILE_MODE) {
+    mousePressedMobile();
+    return;
+  }
+  // Desktop mode (unchanged).
 }
