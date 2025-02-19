@@ -134,15 +134,15 @@ let arrowEaseDuration = 0.5;
 // --------------------------------------------------------------------------
 
 // Styling for letter balls:
-let letterBallSize = 25;            // radius
-let letterBallTextSize = 14;        // text size
-let letterBallColor = [170];        // fill color
+let letterBallSize = 18;            // radius
+let letterBallTextSize = 12;        // text size
+let letterBallColor = [255];        // fill color
 let letterBallTextColor = [0];      // text color
 
 // Styling for final text circle:
-let textBallSize = 100;             // radius
+let textBallSize = 110;             // radius
 let textBallColor = [255];          // fill color
-let textBallTextSize = 14;          // text size
+let textBallTextSize = 13;          // text size
 let textBallTextColor = [0];        // text color
 
 // Styling for "Enable Motion" circle (its size equals textBallSize)
@@ -155,7 +155,7 @@ let enableMotionBackgroundColor = [80];
 let regularBackgroundColor = [255, 235, 59];
 
 // Final text for final text circle:
-let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
+let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
 // Mobile state machine states:
 // "ENABLE_MOTION": Show the enable motion button.
@@ -521,10 +521,9 @@ class CenterArrowBall {
     text(arrowGlyph, -w / 2, (a - d) / 2);
     pop();
   }
-}
-
-// ===========================================================================
-// MOBILE MODE (State Machine Implementation with Permission Button and Top Wall)
+}// ===========================================================================
+// MOBILE MODE (State Machine Implementation with Permission Button, Top Wall,
+// and DeviceMotion for extra physics interactions)
 // ===========================================================================
 function setupMobile() {
   // Create the canvas for mobile.
@@ -534,19 +533,19 @@ function setupMobile() {
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
   
-  // Create walls WITHOUT the top wall so balls can fall in.
+  // Create walls
   let group = Composite.create();
   let thick = 200;
+  // Top wall: positioned above the canvas.
+  let topWall = Bodies.rectangle(width/2, -thick/2, width + thick*2, thick, { isStatic: true });
   let bottomWall = Bodies.rectangle(width/2, height + thick/2, width + thick*2, thick, { isStatic: true });
   let leftWall = Bodies.rectangle(-thick/2, height/2, thick, height + thick*2, { isStatic: true });
   let rightWall = Bodies.rectangle(width + thick/2, height/2, thick, height + thick*2, { isStatic: true });
-  Composite.add(group, [bottomWall, leftWall, rightWall]);
+  Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
   World.add(mobileWorld, group);
-  // (We are not adding a top wall, so balls will be generated inside the canvas.)
   
-  // Create a static center circle for collision.
-  let radius = min(width, height) * 0.35;
-  mobileCircleBody = Bodies.circle(width/2, height/2, radius, { isStatic: true });
+  // Create a static center circle for collision using the drawn circle's size.
+  mobileCircleBody = Bodies.circle(width/2, height/2, textBallSize, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
   
   // Set initial mobile state.
@@ -557,9 +556,10 @@ function setupMobile() {
   bgColorTo = [...regularBackgroundColor];
   console.log("Mobile setup complete. State:", mobileState);
   
-  // Create an HTML button for motion permission (for iOS 13+)
+  // Request permission if needed (for iOS 13+)
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
+    // Create an HTML button for permission.
     permissionButton = createButton(enableMotionText);
     permissionButton.style('width', (textBallSize * 2) + 'px');
     permissionButton.style('height', (textBallSize * 2) + 'px');
@@ -571,19 +571,22 @@ function setupMobile() {
     permissionButton.position(width/2 - textBallSize, height/2 - textBallSize);
     permissionButton.mousePressed(requestMotionPermission);
   } else {
+    // If permission is not required, add both orientation and motion event listeners.
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+    window.addEventListener("devicemotion", handleDeviceMotion, true);
   }
 }
 
 function drawMobile() {
-    Engine.update(mobileEngine);
+  // Update the physics simulation.
+  Engine.update(mobileEngine);
 
   if (mobileState === "ENABLE_MOTION") {
     background(...enableMotionBackgroundColor);
-    // The HTML button is visible on top; you can optionally draw a faint circle behind it.
+    // The HTML permission button is visible on top.
   } else if (mobileState === "FADING_TO_TEXT") {
     let t = (millis() - fadeStartTime) / (fadeDuration * 1000);
-    if (t > 1) t = 1;
+    t = constrain(t, 0, 1);
     let r = lerp(bgColorFrom[0], bgColorTo[0], t);
     let g = lerp(bgColorFrom[1], bgColorTo[1], t);
     let b = lerp(bgColorFrom[2], bgColorTo[2], t);
@@ -626,28 +629,43 @@ function touchStarted() {
   }
 }
 
+// Request both device orientation and device motion permission if required.
 function requestMotionPermission() {
   console.log("Requesting motion permission...");
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     DeviceOrientationEvent.requestPermission()
-      .then((response) => {
-        console.log("Motion permission response:", response);
+      .then(response => {
         if (response === "granted") {
           window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+          // Request device motion permission if required.
+          if (typeof DeviceMotionEvent !== "undefined" &&
+              typeof DeviceMotionEvent.requestPermission === "function") {
+            DeviceMotionEvent.requestPermission()
+              .then(motionResponse => {
+                if (motionResponse === "granted") {
+                  window.addEventListener("devicemotion", handleDeviceMotion, true);
+                } else {
+                  console.log("Device motion permission denied.");
+                }
+              })
+              .catch(console.error);
+          } else {
+            window.addEventListener("devicemotion", handleDeviceMotion, true);
+          }
           if (permissionButton) {
             permissionButton.hide();
           }
           startFadeToText();
         } else {
-          console.log("Motion permission denied.");
+          console.log("Device orientation permission denied.");
         }
       })
-      .catch((err) => {
-         console.error("Error requesting motion permission:", err);
-      });
+      .catch(err => console.error("Error requesting device orientation permission:", err));
   } else {
+    // For devices that don't require permission.
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+    window.addEventListener("devicemotion", handleDeviceMotion, true);
     startFadeToText();
   }
 }
@@ -660,6 +678,7 @@ function startFadeToText() {
   console.log("Starting fade to text. State:", mobileState);
 }
 
+// Draw functions for the enable motion and final text circles.
 function drawEnableMotionCircle(alphaVal) {
   push();
   fill(...enableMotionBallColor, alphaVal);
@@ -684,6 +703,7 @@ function drawFinalTextCircle(alphaVal) {
   pop();
 }
 
+// Handle orientation events (adjusts the gravity based on tilt).
 function handleDeviceOrientation(event) {
   if (!event.beta || !event.gamma) return;
   let gamma = event.gamma;
@@ -692,16 +712,34 @@ function handleDeviceOrientation(event) {
   mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
 }
 
-function createMobileWalls() {
-  let group = Composite.create();
-  let thick = 200;
-  let bottomWall = Bodies.rectangle(width/2, height + thick/2, width + thick*2, thick, { isStatic: true });
-  let leftWall = Bodies.rectangle(-thick/2, height/2, thick, height + thick*2, { isStatic: true });
-  let rightWall = Bodies.rectangle(width + thick/2, height/2, thick, height + thick*2, { isStatic: true });
-  Composite.add(group, [bottomWall, leftWall, rightWall]);
-  return group;
+// Handle motion events (applies an extra force when a shake or whip is detected).
+function handleDeviceMotion(event) {
+  let acc = event.acceleration; // Use acceleration excluding gravity.
+  if (!acc) return;
+  // Calculate acceleration magnitude.
+  let magnitude = sqrt(
+    (acc.x || 0) * (acc.x || 0) +
+    (acc.y || 0) * (acc.y || 0) +
+    (acc.z || 0) * (acc.z || 0)
+  );
+  const threshold = 5; // Adjust threshold as needed.
+  if (magnitude > threshold) {
+    let forceScale = 0.0005; // Adjust to control how strong the force is.
+    // Apply force to every mobile ball.
+    for (let mb of mobileBalls) {
+      Matter.Body.applyForce(
+        mb.body,
+        mb.body.position,
+        {
+          x: (acc.x || 0) * forceScale,
+          y: (acc.y || 0) * forceScale
+        }
+      );
+    }
+  }
 }
 
+// The remaining functions for spawning and displaying mobile letter balls:
 function spawnAllMobileBalls() {
   mobileLettersToSpawn = [];
   let letters = "NOAMSADI";
@@ -757,10 +795,11 @@ class MobileLetterBall {
   }
 }
 
+// For desktop mode, the mousePressed function remains unchanged.
 function mousePressed() {
   if (MOBILE_MODE) {
     mousePressedMobile();
     return;
   }
-  // Desktop mode (unchanged)
+  // Desktop mode (unchanged).
 }
