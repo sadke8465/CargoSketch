@@ -570,37 +570,42 @@ class CenterArrowBall {
 // ===========================================================================
 // MOBILE MODE
 // ===========================================================================
+// ----- MOBILE MODE SECTION (updates only) -----
+
+// In setupMobile(), we still create the walls and the letter balls.
 function setupMobile() {
-  noCanvas(); 
+  // Disable scrolling by using noCanvas() then recreating the canvas
+  noCanvas();
   createCanvas(windowWidth, windowHeight);
 
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
 
-  // Zero gravity by default
+  // Set initial gravity to zero; it will be updated by device orientation.
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
 
-  // Create walls
+  // Create walls around the screen so balls remain confined.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
 
-  // Large static circle in center
+  // Create a large static circle in the center (for collisions)
   let radius = min(width, height) * 0.35;
-  mobileCircleBody = Bodies.circle(width/2, height/2, radius, { isStatic: true });
+  mobileCircleBody = Bodies.circle(width / 2, height / 2, radius, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
 
-  // 3 sets of NOAMSADI => 24 balls
+  // Create 3 sets of "NOAMSADI" (24 balls total)
   let letters = "NOAMSADI";
-  for (let s=0; s<3; s++) {
-    for (let i=0; i<letters.length; i++) {
+  for (let s = 0; s < 3; s++) {
+    for (let i = 0; i < letters.length; i++) {
       createMobileLetterBall(letters[i]);
     }
   }
 
-  // Device orientation
-  if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
-    // iOS 13+ permission
+  // Listen for device orientation events.
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    // For iOS 13+ devices.
     DeviceOrientationEvent.requestPermission().then((response) => {
       if (response === "granted") {
         window.addEventListener("deviceorientation", handleDeviceOrientation, true);
@@ -611,70 +616,63 @@ function setupMobile() {
   }
 }
 
-function drawMobile() {
-  background("#FFEB3B"); 
-  Engine.update(mobileEngine);
-
-  // Draw big circle
-  fill(255);
-  noStroke();
-  let radius = min(width, height) * 0.35;
-  ellipse(width/2, height/2, radius*2);
-  
-  // Circle text
-  fill(0);
-  textSize(radius*0.07);
-  textAlign(CENTER, CENTER);
-  text(mobileCircleText, width/2, height/2);
-
-  // Balls
-  for (let b of mobileBalls) {
-    b.show();
-  }
-}
-
-// Mobile click => mailto
-function mousePressedMobile() {
-  let radius = min(width, height)*0.35;
-  let dx = mouseX - width/2;
-  let dy = mouseY - height/2;
-  if (dx*dx + dy*dy <= radius*radius) {
-    window.location.href = "mailto:sadke8465@gmail.com";
-  }
-}
-
-// Device orientation => tilt gravity
+// Update the device orientation handling so gravity reacts to tilt.
 function handleDeviceOrientation(event) {
-  let gamma = event.gamma; // left-right
-  let beta  = event.beta;  // front-back
-  mobileEngine.world.gravity.x = gamma * mobileGravityScale;
-  mobileEngine.world.gravity.y = beta  * mobileGravityScale;
+  // gamma: left-right tilt, beta: front-back tilt.
+  // Normalize gamma (-90 to 90) and beta (typically -90 to 90) so that if fully tilted, gravity ≈ 1.
+  let normGamma = constrain(event.gamma / 90, -1, 1);
+  let normBeta  = constrain(event.beta  / 90, -1, 1);
+  mobileEngine.world.gravity.x = normGamma;
+  mobileEngine.world.gravity.y = normBeta;
 }
 
-// Mobile walls around edges
-function createMobileWalls() {
-  let group = Composite.create();
-  let thick = 200; 
-  let topWall    = Bodies.rectangle(width/2, -thick/2, width + thick*2, thick, { isStatic: true });
-  let bottomWall = Bodies.rectangle(width/2, height + thick/2, width + thick*2, thick, { isStatic: true });
-  let leftWall   = Bodies.rectangle(-thick/2, height/2, thick, height + thick*2, { isStatic: true });
-  let rightWall  = Bodies.rectangle(width + thick/2, height/2, thick, height + thick*2, { isStatic: true });
-  Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
-  return group;
-}
-
-// Mobile letter ball
+// Increase restitution so balls bounce more.
 function createMobileLetterBall(letter) {
-  let r = 25;
+  let r = 25; // ball radius
   let x = random(r, width - r);
   let y = random(r, height - r);
   let body = Bodies.circle(x, y, r, {
-    restitution: 0.7,
+    restitution: 0.9,   // increased for bounciness
     frictionAir: 0.02
   });
   let mb = new MobileLetterBall(body, letter, r);
   mobileBalls.push(mb);
   World.add(mobileWorld, body);
+}
+
+// The rest of the mobile code remains as before:
+function drawMobile() {
+  background("#FFEB3B"); // Bright yellow background
+  Engine.update(mobileEngine);
+
+  // Draw the big circle in the center with text.
+  fill(255);
+  noStroke();
+  let radius = min(width, height) * 0.35;
+  ellipse(width / 2, height / 2, radius * 2);
+
+  // Draw the text in the circle.
+  fill(0);
+  textSize(radius * 0.07);
+  textAlign(CENTER, CENTER);
+  text(mobileCircleText, width / 2, height / 2);
+
+  // Draw each letter ball.
+  for (let b of mobileBalls) {
+    b.show();
+  }
+}
+
+// Walls remain the same.
+function createMobileWalls() {
+  let group = Composite.create();
+  let thick = 200; // wall thickness
+  let topWall    = Bodies.rectangle(width / 2, -thick / 2, width + thick * 2, thick, { isStatic: true });
+  let bottomWall = Bodies.rectangle(width / 2, height + thick / 2, width + thick * 2, thick, { isStatic: true });
+  let leftWall   = Bodies.rectangle(-thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
+  let rightWall  = Bodies.rectangle(width + thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
+  Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
+  return group;
 }
 
 class MobileLetterBall {
@@ -691,8 +689,7 @@ class MobileLetterBall {
     rotate(angle);
     fill(170);
     noStroke();
-    ellipse(0, 0, this.r*2);
-    
+    ellipse(0, 0, this.r * 2);
     fill(0);
     textSize(this.r);
     textAlign(CENTER, CENTER);
