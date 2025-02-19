@@ -550,7 +550,7 @@ function setupMobile() {
   // Do not add the top wall yet; we'll add it after a delay.
   mobileTopWall = undefined;
   // Schedule the top wall to be added after 3000ms.
-  setTimeout(addMobileTopWall, 3000);
+  setTimeout(addMobileTopWall, 15000);
   
   // Create a static center circle for collision.
   let radius = min(width, height) * 0.35;
