@@ -134,15 +134,15 @@ let arrowEaseDuration = 0.5;
 // --------------------------------------------------------------------------
 
 // Styling for letter balls:
-let letterBallSize = 40;            // radius of letter ball
-let letterBallTextSize = 32;        // text size inside letter ball
-let letterBallColor = [170];        // fill color for letter ball
+let letterBallSize = 30;            // radius of letter ball
+let letterBallTextSize = 15;        // text size inside letter ball
+let letterBallColor = [200];        // fill color for letter ball
 let letterBallTextColor = [0];      // text color for letter inside ball
 
 // Styling for final text circle:
-let textBallSize = 180;             // radius of final text circle
-let textBallColor = [255];          // fill color of final text circle
-let textBallTextSize = 20;          // text size inside final text circle
+let textBallSize = 100;             // radius of final text circle
+let textBallColor = [100];          // fill color of final text circle
+let textBallTextSize = 14;          // text size inside final text circle
 let textBallTextColor = [0];        // text color inside final text circle
 
 // Styling for "Enable Motion" circle (its size equals textBallSize):
