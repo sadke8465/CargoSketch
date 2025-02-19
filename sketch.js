@@ -1,18 +1,74 @@
-// --------------------------------------------------------------------------
-// GLOBALS & HELPER FUNCTIONS
-// --------------------------------------------------------------------------
-let MOBILE_MODE = false;
+// sketch.js
 
+// --------------------------------------------------------------------------
+// HELPER FUNCTIONS & GLOBAL DETECTION
+// --------------------------------------------------------------------------
+
+// 1) Detect if mobile device (simple check)
+function isMobileDevice() {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
+}
+
+// 2) Easing functions
+function easeInOutQuad(t) {
+  if (t < 0.5) return 2 * t * t;
+  return -1 + (4 - 2 * t) * t;
+}
+function lerpAngle(a0, a1, amt) {
+  return a0 + (a1 - a0) * amt;
+}
+
+// 3) Substring finder for desktop highlight
+function findExactSubstringIndices(fullText, sub) {
+  let result = [];
+  let matchIndex = 0;
+  let subLen = sub.length;
+  for (let i = 0; i < fullText.length; i++) {
+    if (matchIndex >= subLen) break;
+    let cFull = fullText[i];
+    let cSub = sub[matchIndex];
+    if (cFull.toLowerCase() === cSub.toLowerCase()) {
+      result.push(i);
+      matchIndex++;
+    }
+  }
+  return result;
+}
+
+// 4) Check if point is inside the interactive area (desktop)
+function isInsideInteractiveArea(mx, my) {
+  return (mx >= leftPanelX && mx <= leftPanelX + leftPanelW &&
+          my >= leftPanelY && my <= leftPanelY + leftPanelH);
+}
+
+// --------------------------------------------------------------------------
+// MATTER.JS ALIASES
+// --------------------------------------------------------------------------
+const Engine = Matter.Engine;
+const World = Matter.World;
+const Bodies = Matter.Bodies;
+const Composite = Matter.Composite;
+
+// --------------------------------------------------------------------------
+// GLOBAL VARIABLES FOR MODES
+// --------------------------------------------------------------------------
+let MOBILE_MODE = false; // will be set true if on mobile
+
+// Matter.js engines/worlds
 let desktopEngine, desktopWorld;
 let mobileEngine, mobileWorld;
 
+// --------------------------------------------------------------------------
+// DESKTOP MODE GLOBALS
+// --------------------------------------------------------------------------
 let wallComposite;
 let centerArrowBall;
 let previewBody;
 let oldMousePos = { x: 0, y: 0 };
-let ghostBallScale = 0;
+let ghostBallScale = 0; // starts invisible
 
-let phrase = `Hey, I’m Noam Sadi, a 
+let phrase = 
+`Hey, I’m Noam Sadi, a 
 multidisciplinary designer.
 
 Looking for a place to grow.`;
@@ -23,6 +79,7 @@ let letterSpawnTimes = [];
 let fadeInDuration = 0.15;
 let phraseIndex = 0;
 
+// Layout references
 const refW = 1728;
 const refH = 1117;
 const leftPanelRefW = 500;
@@ -38,6 +95,7 @@ let rightPanelX, rightPanelY, rightPanelW, rightPanelH;
 let phraseX, phraseY, phrasePadding;
 let leftPanelCenterX, leftPanelCenterY;
 
+// Desktop offsets & velocity
 let ghostBallOffset = { x: 10, y: 10 };
 let ballSpawnOffset = { x: 7, y: 7 };
 let ballInitialVelocitySpeed = 7;
@@ -49,6 +107,7 @@ let isFadingBalls = false;
 let fadeBallsStartTime = 1.5;
 let fadeBallsDuration = 0.1;
 
+// Desktop colors and physics configuration
 let backgroundColor = [230];
 let phraseTextColor = [0];
 let highlightBallFill = [70, 200, 70];
@@ -60,7 +119,6 @@ let arrowGlyphColor = [255];
 let ghostBallFill = [127, 50];
 let ghostTextFill = [0, 50];
 let interactiveOutlineColor = [170];
-
 let physicsConfigDesktop = {
   gravity: 0.8,
   friction: 0.01,
@@ -70,42 +128,58 @@ let physicsConfigDesktop = {
 };
 let arrowEaseDuration = 0.5;
 
-// Mobile letter balls styling
-let letterBallSize = 40;
-let letterBallTextSize = 32;
-let letterBallColor = [170];
-let letterBallTextColor = [0];
+// --------------------------------------------------------------------------
+// MOBILE MODE GLOBALS & STYLING VARIABLES
+// --------------------------------------------------------------------------
 
-// Big (center) circle styling (drawn circle and physics body use the same size)
-let textBallSize = 180;
-let textBallColor = [255];
-let textBallTextSize = 20;
-let textBallTextColor = [0];
+// Styling for letter balls:
+let letterBallSize = 40;            // radius
+let letterBallTextSize = 32;        // text size
+let letterBallColor = [170];        // fill color
+let letterBallTextColor = [0];      // text color
 
-// Enable motion button styling
-let enableMotionBallColor = [255];
-let enableMotionTextColor = [0];
+// Styling for final text circle:
+let textBallSize = 180;             // radius (and used for physics body size)
+let textBallColor = [255];          // fill color
+let textBallTextSize = 20;          // text size
+let textBallTextColor = [0];        // text color
+
+// Styling for "Enable Motion" circle:
+let enableMotionBallColor = [255];  // fill color
+let enableMotionTextColor = [0];    // text color
 let enableMotionText = "Enable Motion";
 
-// Background colors
+// Background colors:
 let enableMotionBackgroundColor = [80];
 let regularBackgroundColor = [255, 235, 59];
 
-// Final text for the center circle
+// Final text for final text circle:
 let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
 
-// Mobile state: "ENABLE_MOTION" or "SHOW_TEXT_BALL"
+// Mobile state machine states:
+// "ENABLE_MOTION": Show the enable motion button.
+// "FADING_TO_TEXT": Fade transition.
+// "SHOW_TEXT_BALL": Final state; show final text circle and letter balls.
 let mobileState = "ENABLE_MOTION";
+let fadeDuration = 1.0; // seconds
+let fadeStartTime = 0;
+let enableMotionAlpha = 255;
+let finalTextAlpha = 0;
+let bgColorFrom = [...enableMotionBackgroundColor];
+let bgColorTo = [...regularBackgroundColor];
 
-let mobileLettersToSpawn = [];
+// Mobile letter balls (spawn after fade)
+let mobileBalls = [];
+
+// We'll use an HTML button to request motion permission on iOS.
 let permissionButton;
 
-// New global for the center circle’s rotation (in radians)
-let centerCircleAngle = 0;
+// For gradual spawning of letter balls
+let mobileLettersToSpawn = [];
 
-// p5.js font
-let myFont;
-
+// --------------------------------------------------------------------------
+// p5.js SETUP & DRAW
+// --------------------------------------------------------------------------
 function preload() {
   myFont = loadFont("Geist UltraLight.otf");
 }
@@ -133,23 +207,9 @@ function draw() {
   }
 }
 
-// Simple mobile device check
-function isMobileDevice() {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
-}
-
-// Easing functions
-function easeInOutQuad(t) {
-  if (t < 0.5) return 2 * t * t;
-  return -1 + (4 - 2 * t) * t;
-}
-function lerpAngle(a0, a1, amt) {
-  return a0 + (a1 - a0) * amt;
-}
-
-// --------------------------------------------------------------------------
-// DESKTOP MODE CODE
-// --------------------------------------------------------------------------
+// ===========================================================================
+// DESKTOP MODE FUNCTIONS
+// ===========================================================================
 function setupDesktop() {
   desktopEngine = Engine.create();
   desktopWorld = desktopEngine.world;
@@ -462,37 +522,40 @@ class CenterArrowBall {
   }
 }
 
-// --------------------------------------------------------------------------
-// MOBILE MODE CODE
-// --------------------------------------------------------------------------
+// ===========================================================================
+// MOBILE MODE FUNCTIONS (with DeviceMotion and Permission)
+// ===========================================================================
 function setupMobile() {
+  // Create the canvas for mobile.
   createCanvas(windowWidth, windowHeight);
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
   
-  // Create walls (top, bottom, left, right)
+  // Create walls: top, bottom, left, right.
   let group = Composite.create();
   let thick = 200;
-  let topWall = Bodies.rectangle(width/2, -thick/2, width + thick*2, thick, { isStatic: true });
-  let bottomWall = Bodies.rectangle(width/2, height + thick/2, width + thick*2, thick, { isStatic: true });
-  let leftWall = Bodies.rectangle(-thick/2, height/2, thick, height + thick*2, { isStatic: true });
-  let rightWall = Bodies.rectangle(width + thick/2, height/2, thick, height + thick*2, { isStatic: true });
+  let topWall = Bodies.rectangle(width / 2, -thick / 2, width + thick * 2, thick, { isStatic: true });
+  let bottomWall = Bodies.rectangle(width / 2, height + thick / 2, width + thick * 2, thick, { isStatic: true });
+  let leftWall = Bodies.rectangle(-thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
+  let rightWall = Bodies.rectangle(width + thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
   Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
   World.add(mobileWorld, group);
   
-  // Create a static center circle using textBallSize for both drawing and physics.
-  mobileCircleBody = Bodies.circle(width/2, height/2, textBallSize, { isStatic: true });
+  // Create a static center circle for collision (using textBallSize as the radius).
+  mobileCircleBody = Bodies.circle(width / 2, height / 2, textBallSize, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
   
+  // Set initial mobile state.
   mobileState = "ENABLE_MOTION";
   enableMotionAlpha = 255;
   finalTextAlpha = 0;
-  // (These colors remain defined but we now transition immediately without a fade.)
+  bgColorFrom = [...enableMotionBackgroundColor];
+  bgColorTo = [...regularBackgroundColor];
   console.log("Mobile setup complete. State:", mobileState);
   
-  // Request permission if needed for both orientation and motion.
+  // Request permission for device orientation and motion (for iOS 13+)
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     permissionButton = createButton(enableMotionText);
@@ -503,9 +566,7 @@ function setupMobile() {
     permissionButton.style('border', 'none');
     permissionButton.style('border-radius', '50%');
     permissionButton.style('font-size', textBallTextSize + 'px');
-    // Apply the Geist font
-    permissionButton.style('font-family', '"Geist UltraLight", sans-serif');
-    permissionButton.position(width/2 - textBallSize, height/2 - textBallSize);
+    permissionButton.position(width / 2 - textBallSize, height / 2 - textBallSize);
     permissionButton.mousePressed(requestMotionPermission);
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
@@ -518,11 +579,24 @@ function drawMobile() {
   
   if (mobileState === "ENABLE_MOTION") {
     background(...enableMotionBackgroundColor);
-    // Draw the enable motion circle (the HTML button is on top)
+  } else if (mobileState === "FADING_TO_TEXT") {
+    let t = (millis() - fadeStartTime) / (fadeDuration * 1000);
+    if (t > 1) t = 1;
+    let r = lerp(bgColorFrom[0], bgColorTo[0], t);
+    let g = lerp(bgColorFrom[1], bgColorTo[1], t);
+    let b = lerp(bgColorFrom[2], bgColorTo[2], t);
+    background(r, g, b);
+    enableMotionAlpha = 255 * (1 - t);
+    finalTextAlpha = 255 * t;
     drawEnableMotionCircle(enableMotionAlpha);
+    drawFinalTextCircle(finalTextAlpha);
+    if (t >= 1) {
+      mobileState = "SHOW_TEXT_BALL";
+      spawnAllMobileBalls();
+      console.log("Transition to SHOW_TEXT_BALL");
+    }
   } else if (mobileState === "SHOW_TEXT_BALL") {
     background(...regularBackgroundColor);
-    // Draw the center circle with rotation based on device orientation.
     drawFinalTextCircle(255);
     for (let b of mobileBalls) {
       b.show();
@@ -532,11 +606,12 @@ function drawMobile() {
 
 function mousePressedMobile() {
   if (mobileState === "ENABLE_MOTION") {
-    // The HTML button handles permission.
+    // Permission button handles motion permission.
     return;
   }
+  if (mobileState === "FADING_TO_TEXT") return;
   if (mobileState === "SHOW_TEXT_BALL") {
-    let d = dist(mouseX, mouseY, width/2, height/2);
+    let d = dist(mouseX, mouseY, width / 2, height / 2);
     if (d <= textBallSize) {
       window.location.href = "mailto:sadke8465@gmail.com";
     }
@@ -574,9 +649,7 @@ function requestMotionPermission() {
           if (permissionButton) {
             permissionButton.hide();
           }
-          // Immediately transition to the main page (no fade)
-          mobileState = "SHOW_TEXT_BALL";
-          spawnAllMobileBalls();
+          startFadeToText();
         } else {
           console.log("Device orientation permission denied.");
         }
@@ -585,63 +658,61 @@ function requestMotionPermission() {
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
     window.addEventListener("devicemotion", handleDeviceMotion, true);
-    mobileState = "SHOW_TEXT_BALL";
-    spawnAllMobileBalls();
+    startFadeToText();
   }
+}
+
+function startFadeToText() {
+  mobileState = "FADING_TO_TEXT";
+  fadeStartTime = millis();
+  bgColorFrom = [...enableMotionBackgroundColor];
+  bgColorTo = [...regularBackgroundColor];
+  console.log("Starting fade to text. State:", mobileState);
 }
 
 function drawEnableMotionCircle(alphaVal) {
   push();
   fill(...enableMotionBallColor, alphaVal);
   noStroke();
-  ellipse(width/2, height/2, textBallSize * 2);
+  ellipse(width / 2, height / 2, textBallSize * 2);
   fill(...enableMotionTextColor, alphaVal);
   textAlign(CENTER, CENTER);
   textSize(textBallTextSize);
-  text(enableMotionText, width/2, height/2);
+  text(enableMotionText, width / 2, height / 2);
   pop();
 }
 
-// Draw the center circle with rotation based on the device orientation.
-// The rotation is applied using the global centerCircleAngle (in radians).
 function drawFinalTextCircle(alphaVal) {
   push();
-  translate(width/2, height/2);
-  rotate(centerCircleAngle);
   fill(...textBallColor, alphaVal);
   noStroke();
-  ellipse(0, 0, textBallSize * 2);
+  ellipse(width / 2, height / 2, textBallSize * 2);
   fill(...textBallTextColor, alphaVal);
   textAlign(CENTER, CENTER);
   textSize(textBallTextSize);
-  text(finalTextBallText, 0, 0);
+  text(finalTextBallText, width / 2, height / 2);
   pop();
 }
 
-// Use device orientation both to set a stronger gravity and update the center circle’s rotation.
 function handleDeviceOrientation(event) {
   if (!event.beta || !event.gamma) return;
   let gamma = event.gamma;
   let beta = event.beta;
-  // Map to a stronger gravity range.
-  mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.7, 0.7);
-  mobileEngine.world.gravity.y = map(beta, -90, 90, -0.7, 0.7);
-  // Update the center circle’s rotation using event.alpha (converted to radians).
-  centerCircleAngle = radians(event.alpha || 0);
+  mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.5, 0.5);
+  mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
 }
 
-// Use device motion to add extra forces when a shake/whip is detected.
 function handleDeviceMotion(event) {
-  let acc = event.acceleration;
+  let acc = event.acceleration; // acceleration excluding gravity
   if (!acc) return;
   let magnitude = sqrt(
     (acc.x || 0) * (acc.x || 0) +
     (acc.y || 0) * (acc.y || 0) +
     (acc.z || 0) * (acc.z || 0)
   );
-  const threshold = 5;
+  const threshold = 5; // adjust threshold as needed
   if (magnitude > threshold) {
-    let forceScale = 0.0005;
+    let forceScale = 0.0005; // adjust force magnitude
     for (let mb of mobileBalls) {
       Matter.Body.applyForce(
         mb.body,
@@ -704,33 +775,7 @@ class MobileLetterBall {
     fill(...letterBallTextColor);
     textAlign(CENTER, CENTER);
     textSize(letterBallTextSize);
-    // Adjust vertical alignment by moving text up a few pixels.
-    text(this.letter, 0, -3);
+    text(this.letter, 0, 0);
     pop();
   }
-}
-
-// Global array for mobile balls.
-let mobileBalls = [];
-
-// Desktop helper functions.
-function findExactSubstringIndices(fullText, sub) {
-  let result = [];
-  let matchIndex = 0;
-  let subLen = sub.length;
-  for (let i = 0; i < fullText.length; i++) {
-    if (matchIndex >= subLen) break;
-    let cFull = fullText[i];
-    let cSub = sub[matchIndex];
-    if (cFull.toLowerCase() === cSub.toLowerCase()) {
-      result.push(i);
-      matchIndex++;
-    }
-  }
-  return result;
-}
-
-function isInsideInteractiveArea(mx, my) {
-  return (mx >= leftPanelX && mx <= leftPanelX + leftPanelW &&
-          my >= leftPanelY && my <= leftPanelY + leftPanelH);
 }
