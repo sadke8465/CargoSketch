@@ -168,11 +168,11 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight);
-  ballInitialVelocityAngle = random(ballInitialVelocityAngleMIN, ballInitialVelocityAngleMAX); // Assign a random value in setup()
+    createCanvas(windowWidth, windowHeight);
+    noLoop(); // Prevent p5.js from adding default margin
+    ballInitialVelocityAngle = random(ballInitialVelocityAngleMIN, ballInitialVelocityAngleMAX);
+    updateLayout();
 
-  updateLayout(); // compute layout variables based on current window size
-  
   engine = Engine.create();
   world = engine.world;
   engine.world.gravity.y = physicsConfig.gravity;
