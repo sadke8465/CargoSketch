@@ -148,7 +148,7 @@ let textBallTextColor = [0];        // text color inside final text circle
 // Enable Motion circle styling (its size is same as textBallSize)
 let enableMotionBallColor = [255];  // fill color for enable motion circle
 let enableMotionTextColor = [0];    // text color for enable motion circle
-let enableMotionText = "->    Enable Motion    <- ";
+let enableMotionText = "->    Enable Motion!    <- ";
 
 // Background colors
 let enableMotionBackgroundColor = [80];
@@ -517,26 +517,72 @@ class CenterArrowBall {
     pop();
   }
 }
+// ===========================================================================
+// MOBILE MODE (State Machine with Permission Request)
+// ===========================================================================
 
-// ===========================================================================
-// MOBILE MODE (State Machine Implementation)
-// ===========================================================================
+// ------------------- Styling Variables -------------------
+
+// Letter ball styling:
+let letterBallSize = 40;            // radius of each letter ball
+let letterBallTextSize = 32;        // font size inside letter ball
+let letterBallColor = [170];        // fill color for letter ball
+let letterBallTextColor = [0];      // text color for letter inside ball
+
+// Final text circle styling:
+let textBallSize = 180;             // radius of final text circle (also used for collision button)
+let textBallColor = [255];          // fill color of final text circle
+let textBallTextSize = 20;          // text size inside final text circle
+let textBallTextColor = [0];        // text color inside final text circle
+
+// "Enable Motion" circle styling (its size is same as textBallSize):
+let enableMotionBallColor = [255];  // fill color for enable motion circle
+let enableMotionTextColor = [0];    // text color for enable motion circle
+let enableMotionText = "Enable Motion";
+
+// Background colors:
+let enableMotionBackgroundColor = [80];      // during enable motion state
+let regularBackgroundColor = [255,235,59];     // final background color
+
+// Final text shown inside final text circle:
+let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
+
+// ------------------- Mobile State Variables -------------------
+
+// mobileState can be: "ENABLE_MOTION", "FADING_TO_TEXT", or "SHOW_TEXT_BALL"
+let mobileState = "ENABLE_MOTION";
+let fadeDuration = 1000; // fade duration in milliseconds
+let fadeStartTime = 0;
+let enableMotionAlpha = 255;  // alpha for enable-motion circle
+let finalTextAlpha = 0;       // alpha for final text circle
+
+// For background color fade:
+let bgColorFrom = [...enableMotionBackgroundColor];
+let bgColorTo = [...regularBackgroundColor];
+
+// We'll store the mobile letter balls (spawned after fade)
+let mobileBalls = [];
+
+// ------------------- Matter.js Objects for Mobile -------------------
+let mobileEngine, mobileWorld;
+let deviceWalls;         // walls to keep balls in view
+// (We will draw the final text circle with p5 so we don't need a Matter body for it)
+
+// ------------------- Setup & Draw -------------------
 function setupMobile() {
-  // Create a canvas for mobile mode.
+  // Create the mobile canvas only once.
   createCanvas(windowWidth, windowHeight);
+
+  // Initialize Matter.js engine for mobile.
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
+  // Start with zero gravity; we'll update it via deviceorientation.
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
 
-  // Create walls around the screen.
+  // Create walls around the entire screen.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
-
-  // Create a large static circle in the center (for collision; if desired).
-  let radius = min(width, height) * 0.35;
-  mobileCircleBody = Bodies.circle(width / 2, height / 2, radius, { isStatic: true });
-  World.add(mobileWorld, mobileCircleBody);
 
   // Set initial mobile state.
   mobileState = "ENABLE_MOTION";
@@ -545,25 +591,29 @@ function setupMobile() {
   bgColorFrom = [...enableMotionBackgroundColor];
   bgColorTo = [...regularBackgroundColor];
 
-  // For iOS 13+ permission, do not auto-request; user must tap.
+  // For iOS 13+ permission, do not auto-request; user must tap the enable-motion circle.
   if (!(typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function")) {
+    // If not iOS 13+, add the event listener right away.
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
   }
 }
 
 function drawMobile() {
+  // State machine:
   if (mobileState === "ENABLE_MOTION") {
+    // Show enable motion state: background = enableMotionBackgroundColor, and draw enable-motion circle.
     background(...enableMotionBackgroundColor);
     drawEnableMotionCircle(enableMotionAlpha);
   } else if (mobileState === "FADING_TO_TEXT") {
-    let t = (millis() - fadeStartTime) / (fadeDuration * 1000);
+    let t = (millis() - fadeStartTime) / fadeDuration;
     if (t > 1) t = 1;
-    // Fade background color.
+    // Fade background color:
     let r = lerp(bgColorFrom[0], bgColorTo[0], t);
     let g = lerp(bgColorFrom[1], bgColorTo[1], t);
     let b = lerp(bgColorFrom[2], bgColorTo[2], t);
     background(r, g, b);
+    // Fade circles:
     enableMotionAlpha = 255 * (1 - t);
     finalTextAlpha = 255 * t;
     drawEnableMotionCircle(enableMotionAlpha);
@@ -575,53 +625,46 @@ function drawMobile() {
   } else if (mobileState === "SHOW_TEXT_BALL") {
     background(...regularBackgroundColor);
     drawFinalTextCircle(255);
+    Engine.update(mobileEngine);
+    // Draw letter balls:
     for (let b of mobileBalls) {
       b.show();
     }
   }
 }
 
-function mousePressedMobile() {
-  // In ENABLE_MOTION state, tapping the enable-motion circle triggers permission.
+// Use touchStarted so iOS registers the user gesture.
+function touchStarted() {
   if (mobileState === "ENABLE_MOTION") {
-    let d = dist(mouseX, mouseY, width/2, height/2);
-    if (d <= textBallSize) { // textBallSize is used as circle radius.
+    let d = dist(touchX, touchY, width/2, height/2);
+    if (d <= textBallSize) {  // using textBallSize as the radius of the circle
       requestMotionPermission();
     }
-    return;
-  }
-  if (mobileState === "FADING_TO_TEXT") return;
-  if (mobileState === "SHOW_TEXT_BALL") {
-    let d = dist(mouseX, mouseY, width/2, height/2);
+  } else if (mobileState === "SHOW_TEXT_BALL") {
+    let d = dist(touchX, touchY, width/2, height/2);
     if (d <= textBallSize) {
       window.location.href = "mailto:sadke8465@gmail.com";
     }
   }
+  return false; // prevent default
 }
 
-function touchStarted() {
-  if (MOBILE_MODE) {
-    mousePressedMobile();
-  }
-}
-
+// ------------------- Permission Request -------------------
 function requestMotionPermission() {
   console.log("Requesting motion permission...");
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then((response) => {
-        console.log("Motion permission response:", response);
-        if (response === "granted") {
-          window.addEventListener("deviceorientation", handleDeviceOrientation, true);
-          startFadeToText();
-        } else {
-          console.log("Motion permission denied.");
-        }
-      })
-      .catch((err) => {
-         console.error("Error requesting motion permission:", err);
-      });
+    DeviceOrientationEvent.requestPermission().then(response => {
+      console.log("Motion permission response:", response);
+      if (response === "granted") {
+        window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+        startFadeToText();
+      } else {
+        console.log("Motion permission denied.");
+      }
+    }).catch(err => {
+      console.error("Error requesting motion permission:", err);
+    });
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
     startFadeToText();
@@ -631,10 +674,12 @@ function requestMotionPermission() {
 function startFadeToText() {
   mobileState = "FADING_TO_TEXT";
   fadeStartTime = millis();
+  // Set initial background colors for fading.
   bgColorFrom = [...enableMotionBackgroundColor];
   bgColorTo = [...regularBackgroundColor];
 }
 
+// ------------------- Drawing Circles -------------------
 function drawEnableMotionCircle(alphaVal) {
   push();
   fill(...enableMotionBallColor, alphaVal);
@@ -660,14 +705,16 @@ function drawFinalTextCircle(alphaVal) {
   pop();
 }
 
+// ------------------- Device Orientation Handler -------------------
 function handleDeviceOrientation(event) {
-  if (!event.beta || !event.gamma) return; // Ensure values exist.
-  let gamma = event.gamma; // left-right tilt.
-  let beta = event.beta;   // front-back tilt.
+  if (!event.gamma || !event.beta) return;
+  let gamma = event.gamma; // left-right
+  let beta = event.beta;   // front-back
   mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.5, 0.5);
   mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
 }
 
+// ------------------- Walls for Mobile -------------------
 function createMobileWalls() {
   let group = Composite.create();
   let thick = 200;
@@ -679,6 +726,7 @@ function createMobileWalls() {
   return group;
 }
 
+// ------------------- Spawning Letter Balls -------------------
 function spawnLetterBallsFromAbove() {
   let letters = "NOAMSADI";
   for (let s = 0; s < 3; s++) {
@@ -693,7 +741,7 @@ function createMobileLetterBall(letter, spawnAbove = false) {
   let x = random(r, width - r);
   let y = random(r, height - r);
   if (spawnAbove) {
-    y = -r * 2;
+    y = -r * 2;  // spawn above the screen
   }
   let body = Bodies.circle(x, y, r, {
     restitution: 0.95,
