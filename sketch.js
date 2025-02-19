@@ -152,7 +152,7 @@ let mobileCircleText = `This site is best viewed on a desktop device
 
 ☺
 
-Click here to contact`;
+Click here to contact!`;
 
 // --------------------------------------------------------------------------
 // p5.js & Font
