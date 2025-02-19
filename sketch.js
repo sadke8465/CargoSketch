@@ -45,7 +45,7 @@ function isInsideInteractiveArea(mx, my) {
 // MATTER.JS ALIASES
 // --------------------------------------------------------------------------
 const Engine = Matter.Engine;
-const World  = Matter.World;
+const World = Matter.World;
 const Bodies = Matter.Bodies;
 const Composite = Matter.Composite;
 
@@ -158,9 +158,9 @@ let regularBackgroundColor = [255,235,59];
 let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
 
 // Mobile state machine:
-// "ENABLE_MOTION": Show enable motion circle.
-// "FADING_TO_TEXT": Fade out enable motion circle & bg and fade in final text circle, then spawn letter balls.
-// "SHOW_TEXT_BALL": Final state; show final text circle and letter balls.
+// "ENABLE_MOTION": Show the enable-motion button (HTML button overlay) and a drawn enable-motion circle behind it.
+// "FADING_TO_TEXT": Fade out the enable-motion circle and background while fading in the final text circle.
+// "SHOW_TEXT_BALL": Final state; show the final text circle and bouncing letter balls.
 let mobileState = "ENABLE_MOTION";
 let fadeDuration = 1.0; // seconds
 let fadeStartTime = 0;
@@ -171,6 +171,9 @@ let bgColorTo   = [...regularBackgroundColor];
 
 // Mobile letter balls (spawn after fade)
 let mobileBalls = [];
+
+// We'll use an HTML button to request motion permission on iOS.
+let permissionButton;
 
 // --------------------------------------------------------------------------
 // p5.js Setup & Draw
@@ -187,7 +190,6 @@ function setup() {
   console.log("Detected mobile?", MOBILE_MODE);
 
   if (MOBILE_MODE) {
-    // For mobile, let setupMobile() create the canvas.
     setupMobile();
   } else {
     createCanvas(windowWidth, windowHeight);
@@ -520,35 +522,59 @@ class CenterArrowBall {
 }
 
 // ===========================================================================
-// MOBILE MODE (State Machine Implementation)
+// MOBILE MODE (State Machine Implementation with HTML Button)
 // ===========================================================================
 function setupMobile() {
-  // Create a canvas for mobile mode.
+  // Create the canvas for mobile.
   createCanvas(windowWidth, windowHeight);
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
+  
+  // Create walls around the screen.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
-  // Also add a static center circle for collision (if needed)
+  
+  // Create a static center circle for collision (if desired).
   let radius = min(width, height) * 0.35;
-  mobileCircleBody = Bodies.circle(width / 2, height / 2, radius, { isStatic: true });
+  mobileCircleBody = Bodies.circle(width/2, height/2, radius, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
-  // Set initial mobile state.
+  
+  // Set initial state.
   mobileState = "ENABLE_MOTION";
   enableMotionAlpha = 255;
   finalTextAlpha = 0;
   bgColorFrom = [...enableMotionBackgroundColor];
   bgColorTo = [...regularBackgroundColor];
   console.log("Mobile setup complete. State:", mobileState);
-  // Do not auto-request motion permission; wait for user tap.
+  
+  // Create an HTML button for motion permission that covers the same area as the circle.
+  // This ensures the request is in direct response to a user gesture.
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    permissionButton = createButton(enableMotionText);
+    permissionButton.style('width', (textBallSize * 2) + 'px');
+    permissionButton.style('height', (textBallSize * 2) + 'px');
+    permissionButton.style('background-color', color(enableMotionBallColor));
+    permissionButton.style('color', color(enableMotionTextColor));
+    permissionButton.style('border', 'none');
+    permissionButton.style('border-radius', '50%');
+    permissionButton.style('font-size', textBallTextSize + 'px');
+    permissionButton.position(width/2 - textBallSize, height/2 - textBallSize);
+    permissionButton.mousePressed(requestMotionPermission);
+  } else {
+    window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+  }
 }
 
 function drawMobile() {
+  // The state machine for mobile:
   if (mobileState === "ENABLE_MOTION") {
+    // Draw background and (optionally) a faint enable motion circle behind the button.
     background(...enableMotionBackgroundColor);
-    drawEnableMotionCircle(enableMotionAlpha);
+    // You can choose to draw the circle here if desired:
+    // drawEnableMotionCircle(enableMotionAlpha);
   } else if (mobileState === "FADING_TO_TEXT") {
     let t = (millis() - fadeStartTime) / (fadeDuration * 1000);
     if (t > 1) t = 1;
@@ -575,18 +601,12 @@ function drawMobile() {
 }
 
 function mousePressedMobile() {
-  // In ENABLE_MOTION state, if user taps within the enable-motion circle, request permission.
+  // In ENABLE_MOTION state, the button now handles permission.
   if (mobileState === "ENABLE_MOTION") {
-    let d = dist(mouseX, mouseY, width/2, height/2);
-    console.log("Enable motion tap, d =", d);
-    if (d <= textBallSize) { // textBallSize is used as the radius.
-      requestMotionPermission();
-    }
+    // Do nothing here since the HTML button is active.
     return;
   }
-  // In FADING_TO_TEXT, do nothing.
   if (mobileState === "FADING_TO_TEXT") return;
-  // In SHOW_TEXT_BALL, if user taps within the final text circle, open mailto.
   if (mobileState === "SHOW_TEXT_BALL") {
     let d = dist(mouseX, mouseY, width/2, height/2);
     if (d <= textBallSize) {
@@ -610,6 +630,10 @@ function requestMotionPermission() {
         console.log("Motion permission response:", response);
         if (response === "granted") {
           window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+          // Hide the button
+          if (permissionButton) {
+            permissionButton.hide();
+          }
           startFadeToText();
         } else {
           console.log("Motion permission denied.");
