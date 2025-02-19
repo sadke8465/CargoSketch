@@ -17,6 +17,12 @@ function easeInOutQuad(t) {
 function lerpAngle(a0, a1, amt) {
   return a0 + (a1 - a0) * amt;
 }
+function lerpAngle(a0, a1, t) {
+  let diff = a1 - a0;
+  while (diff < -PI) diff += TWO_PI;
+  while (diff > PI) diff -= TWO_PI;
+  return a0 + diff * t;
+}
 
 // 3) Substring finder for desktop highlight
 function findExactSubstringIndices(fullText, sub) {
@@ -694,9 +700,8 @@ function handleDeviceOrientation(event) {
   // Calculate target angle (in radians)
   let targetAngle = radians(event.alpha);
   
-  // Ease the rotation: interpolate between current and target angle
-  // 0.1 is the easing factor (adjust as needed)
-  mobileBigCircleAngle = lerp(mobileBigCircleAngle, targetAngle, 0.1);
+  // Ease the rotation with our custom angle lerp to avoid loops.
+  mobileBigCircleAngle = lerpAngle(mobileBigCircleAngle, targetAngle, 0.1);
   
   // Map gravity more strongly.
   mobileEngine.world.gravity.x = map(event.gamma, -90, 90, -1, 1);
@@ -781,13 +786,4 @@ class MobileLetterBall {
     text(this.letter, 0, -this.r * 0.2);
     pop();
   }
-}
-
-// For desktop mode, the mousePressed function remains unchanged.
-function mousePressed() {
-  if (MOBILE_MODE) {
-    mousePressedMobile();
-    return;
-  }
-  // Desktop mode (unchanged).
 }
