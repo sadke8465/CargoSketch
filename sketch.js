@@ -580,10 +580,6 @@ permissionButton.mousePressed((event) => {
   event.stopPropagation();
   requestMotionPermission();
 });
-  } else {
-    window.addEventListener("deviceorientation", handleDeviceOrientation, true);
-    window.addEventListener("devicemotion", handleDeviceMotion, true);
-  }
 }
 
 function drawMobile() {
