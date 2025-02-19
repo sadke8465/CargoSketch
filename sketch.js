@@ -569,25 +569,25 @@ class CenterArrowBall {
 // ... [All desktop mode code remains unchanged above]
 
 // ===========================================================================
-// MOBILE MODE
+// MOBILE MODE (Revised for Strong, Continuous Gravity)
 // ===========================================================================
 function setupMobile() {
-  // Turn off any default canvas behavior and ensure full screen.
+  // Ensure full-screen canvas.
   noCanvas();
   createCanvas(windowWidth, windowHeight);
 
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
 
-  // Set gravity initially to zero; we'll update via device orientation events.
+  // Start with zero gravity; we'll update via orientation.
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
 
-  // Create walls around the entire screen.
+  // Create walls around the screen.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
 
-  // Create a large static circle in the center that the balls will collide with.
+  // Create a large static circle in the center.
   let radius = min(width, height) * 0.35;
   mobileCircleBody = Bodies.circle(width / 2, height / 2, radius, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
@@ -601,7 +601,6 @@ function setupMobile() {
   }
 
   // Listen to device orientation.
-  // For iOS 13+ devices, request permission.
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     DeviceOrientationEvent.requestPermission()
@@ -617,10 +616,10 @@ function setupMobile() {
 }
 
 function drawMobile() {
-  background("#FFEB3B"); // Bright yellow background.
+  background("#000000"); // Bright yellow background.
   Engine.update(mobileEngine);
 
-  // Draw the big center circle.
+  // Draw the big circle in the center.
   fill(255);
   noStroke();
   let radius = min(width, height) * 0.35;
@@ -638,8 +637,8 @@ function drawMobile() {
   }
 }
 
-// When the user taps the circle, open the mailto link.
 function mousePressedMobile() {
+  // If user taps inside the center circle, open mailto.
   let radius = min(width, height) * 0.35;
   let dx = mouseX - width / 2;
   let dy = mouseY - height / 2;
@@ -648,19 +647,20 @@ function mousePressedMobile() {
   }
 }
 
-// Handle device orientation to update the mobile gravity.
-// Increase the scale so even subtle tilts produce noticeable acceleration.
+// Use the device's tilt to update gravity.
+// We map gamma (left/right) and beta (front/back) from -90 to 90 degrees into a gravity range.
 function handleDeviceOrientation(event) {
   let gamma = event.gamma; // left-right tilt.
   let beta = event.beta;   // front-back tilt.
-  mobileEngine.world.gravity.x = gamma * 0.05; // Increased scale.
-  mobileEngine.world.gravity.y = beta * 0.05;    // Increased scale.
+  // Map the tilt angles to a gravity range (-0.5 to 0.5).
+  mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.5, 0.5);
+  mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
 }
 
-// Create walls around the device edges.
+// Create walls that bound the entire mobile screen.
 function createMobileWalls() {
   let group = Composite.create();
-  let thick = 200; // Thickness of walls.
+  let thick = 200; // Wall thickness.
   let topWall = Bodies.rectangle(width / 2, -thick / 2, width + thick * 2, thick, { isStatic: true });
   let bottomWall = Bodies.rectangle(width / 2, height + thick / 2, width + thick * 2, thick, { isStatic: true });
   let leftWall = Bodies.rectangle(-thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
@@ -669,14 +669,15 @@ function createMobileWalls() {
   return group;
 }
 
-// Create a mobile letter ball with updated physics parameters.
+// Create a mobile letter ball with adjusted physics for continuous movement.
 function createMobileLetterBall(letter) {
   let r = 25; // Ball radius.
   let x = random(r, width - r);
   let y = random(r, height - r);
+  // Use very low air friction and high restitution.
   let body = Bodies.circle(x, y, r, {
-    restitution: 0.9,    // High bounce.
-    frictionAir: 0.001   // Very little air friction.
+    restitution: 0.95,     // Very bouncy.
+    frictionAir: 0.00001   // Almost no air friction.
   });
   let mb = new MobileLetterBall(body, letter, r);
   mobileBalls.push(mb);
@@ -706,3 +707,4 @@ class MobileLetterBall {
     pop();
   }
 }
+
