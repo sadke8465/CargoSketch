@@ -566,35 +566,33 @@ class CenterArrowBall {
     pop();
   }
 }
+// ... [All desktop mode code remains unchanged above]
 
 // ===========================================================================
 // MOBILE MODE
 // ===========================================================================
-// ----- MOBILE MODE SECTION (updates only) -----
-
-// In setupMobile(), we still create the walls and the letter balls.
 function setupMobile() {
-  // Disable scrolling by using noCanvas() then recreating the canvas
+  // Turn off any default canvas behavior and ensure full screen.
   noCanvas();
   createCanvas(windowWidth, windowHeight);
 
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
 
-  // Set initial gravity to zero; it will be updated by device orientation.
+  // Set gravity initially to zero; we'll update via device orientation events.
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
 
-  // Create walls around the screen so balls remain confined.
+  // Create walls around the entire screen.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
 
-  // Create a large static circle in the center (for collisions)
+  // Create a large static circle in the center that the balls will collide with.
   let radius = min(width, height) * 0.35;
   mobileCircleBody = Bodies.circle(width / 2, height / 2, radius, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
 
-  // Create 3 sets of "NOAMSADI" (24 balls total)
+  // Create 3 sets of "NOAMSADI" (24 balls total).
   let letters = "NOAMSADI";
   for (let s = 0; s < 3; s++) {
     for (let i = 0; i < letters.length; i++) {
@@ -602,79 +600,90 @@ function setupMobile() {
     }
   }
 
-  // Listen for device orientation events.
+  // Listen to device orientation.
+  // For iOS 13+ devices, request permission.
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
-    // For iOS 13+ devices.
-    DeviceOrientationEvent.requestPermission().then((response) => {
-      if (response === "granted") {
-        window.addEventListener("deviceorientation", handleDeviceOrientation, true);
-      }
-    }).catch(console.error);
+    DeviceOrientationEvent.requestPermission()
+      .then((response) => {
+        if (response === "granted") {
+          window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+        }
+      })
+      .catch(console.error);
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
   }
 }
 
-// Update the device orientation handling so gravity reacts to tilt.
-function handleDeviceOrientation(event) {
-  // gamma: left-right tilt, beta: front-back tilt.
-  // Normalize gamma (-90 to 90) and beta (typically -90 to 90) so that if fully tilted, gravity ≈ 1.
-  let normGamma = constrain(event.gamma / 90, -1, 1);
-  let normBeta  = constrain(event.beta  / 90, -1, 1);
-  mobileEngine.world.gravity.x = normGamma;
-  mobileEngine.world.gravity.y = normBeta;
+function drawMobile() {
+  background("#FFEB3B"); // Bright yellow background.
+  Engine.update(mobileEngine);
+
+  // Draw the big center circle.
+  fill(255);
+  noStroke();
+  let radius = min(width, height) * 0.35;
+  ellipse(width / 2, height / 2, radius * 2);
+
+  // Draw the text inside the circle.
+  fill(0);
+  textSize(radius * 0.07);
+  textAlign(CENTER, CENTER);
+  text(mobileCircleText, width / 2, height / 2);
+
+  // Draw all mobile letter balls.
+  for (let b of mobileBalls) {
+    b.show();
+  }
 }
 
-// Increase restitution so balls bounce more.
+// When the user taps the circle, open the mailto link.
+function mousePressedMobile() {
+  let radius = min(width, height) * 0.35;
+  let dx = mouseX - width / 2;
+  let dy = mouseY - height / 2;
+  if (dx * dx + dy * dy <= radius * radius) {
+    window.location.href = "mailto:sadke8465@gmail.com";
+  }
+}
+
+// Handle device orientation to update the mobile gravity.
+// Increase the scale so even subtle tilts produce noticeable acceleration.
+function handleDeviceOrientation(event) {
+  let gamma = event.gamma; // left-right tilt.
+  let beta = event.beta;   // front-back tilt.
+  mobileEngine.world.gravity.x = gamma * 0.05; // Increased scale.
+  mobileEngine.world.gravity.y = beta * 0.05;    // Increased scale.
+}
+
+// Create walls around the device edges.
+function createMobileWalls() {
+  let group = Composite.create();
+  let thick = 200; // Thickness of walls.
+  let topWall = Bodies.rectangle(width / 2, -thick / 2, width + thick * 2, thick, { isStatic: true });
+  let bottomWall = Bodies.rectangle(width / 2, height + thick / 2, width + thick * 2, thick, { isStatic: true });
+  let leftWall = Bodies.rectangle(-thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
+  let rightWall = Bodies.rectangle(width + thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
+  Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
+  return group;
+}
+
+// Create a mobile letter ball with updated physics parameters.
 function createMobileLetterBall(letter) {
-  let r = 25; // ball radius
+  let r = 25; // Ball radius.
   let x = random(r, width - r);
   let y = random(r, height - r);
   let body = Bodies.circle(x, y, r, {
-    restitution: 0.9,   // increased for bounciness
-    frictionAir: 0.02
+    restitution: 0.9,    // High bounce.
+    frictionAir: 0.001   // Very little air friction.
   });
   let mb = new MobileLetterBall(body, letter, r);
   mobileBalls.push(mb);
   World.add(mobileWorld, body);
 }
 
-// The rest of the mobile code remains as before:
-function drawMobile() {
-  background("#FFEB3B"); // Bright yellow background
-  Engine.update(mobileEngine);
-
-  // Draw the big circle in the center with text.
-  fill(255);
-  noStroke();
-  let radius = min(width, height) * 0.35;
-  ellipse(width / 2, height / 2, radius * 2);
-
-  // Draw the text in the circle.
-  fill(0);
-  textSize(radius * 0.07);
-  textAlign(CENTER, CENTER);
-  text(mobileCircleText, width / 2, height / 2);
-
-  // Draw each letter ball.
-  for (let b of mobileBalls) {
-    b.show();
-  }
-}
-
-// Walls remain the same.
-function createMobileWalls() {
-  let group = Composite.create();
-  let thick = 200; // wall thickness
-  let topWall    = Bodies.rectangle(width / 2, -thick / 2, width + thick * 2, thick, { isStatic: true });
-  let bottomWall = Bodies.rectangle(width / 2, height + thick / 2, width + thick * 2, thick, { isStatic: true });
-  let leftWall   = Bodies.rectangle(-thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
-  let rightWall  = Bodies.rectangle(width + thick / 2, height / 2, thick, height + thick * 2, { isStatic: true });
-  Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
-  return group;
-}
-
+// Mobile letter ball class.
 class MobileLetterBall {
   constructor(body, letter, r) {
     this.body = body;
