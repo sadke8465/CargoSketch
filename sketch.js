@@ -9,7 +9,7 @@ function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
 }
 
-// 2) Easing functions
+// 2) Easing
 function easeInOutQuad(t) {
   if (t < 0.5) return 2 * t * t;
   return -1 + (4 - 2 * t) * t;
@@ -54,7 +54,7 @@ const Composite = Matter.Composite;
 // --------------------------------------------------------------------------
 let MOBILE_MODE = false;
 
-// We'll store references to our Matter.js engines/worlds
+// We store references to our Matter.js engines/worlds
 let desktopEngine, desktopWorld;
 let mobileEngine, mobileWorld;
 
@@ -130,34 +130,37 @@ let physicsConfigDesktop = {
 let arrowEaseDuration = 0.5;
 
 // --------------------------------------------------------------------------
-// MOBILE MODE GLOBALS & STYLING VARIABLES (New)
+// MOBILE MODE GLOBALS & STYLING VARIABLES
 // --------------------------------------------------------------------------
 
-// Letter ball styling
+// Styling for letter balls:
 let letterBallSize = 40;            // radius of letter ball
 let letterBallTextSize = 32;        // text size inside letter ball
 let letterBallColor = [170];        // fill color for letter ball
 let letterBallTextColor = [0];      // text color for letter inside ball
 
-// Final text circle styling
-let textBallSize = 100;             // radius of final text circle
+// Styling for final text circle:
+let textBallSize = 180;             // radius of final text circle
 let textBallColor = [255];          // fill color of final text circle
-let textBallTextSize = 14;          // text size inside final text circle
+let textBallTextSize = 20;          // text size inside final text circle
 let textBallTextColor = [0];        // text color inside final text circle
 
-// "Enable Motion" circle styling (its size equals textBallSize)
+// Styling for "Enable Motion" circle (its size equals textBallSize):
 let enableMotionBallColor = [255];  // fill color for enable motion circle
 let enableMotionTextColor = [0];    // text color for enable motion circle
 let enableMotionText = "Enable Motion";
 
-// Background colors
+// Background colors:
 let enableMotionBackgroundColor = [80];
 let regularBackgroundColor = [255,235,59];
 
-// Final text for final text circle
+// Final text for final text circle:
 let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
 
-// Mobile state machine states: "ENABLE_MOTION", "FADING_TO_TEXT", "SHOW_TEXT_BALL"
+// Mobile state machine:
+// "ENABLE_MOTION": Show the enable-motion button (HTML button overlaid) and drawn circle.
+// "FADING_TO_TEXT": Fade from enable motion view to final text view.
+// "SHOW_TEXT_BALL": Final state; show final text circle and bouncing letter balls.
 let mobileState = "ENABLE_MOTION";
 let fadeDuration = 1.0; // seconds
 let fadeStartTime = 0;
@@ -166,19 +169,18 @@ let finalTextAlpha = 0;
 let bgColorFrom = [...enableMotionBackgroundColor];
 let bgColorTo   = [...regularBackgroundColor];
 
-// Mobile letter balls (spawn later)
+// Mobile letter balls (spawn after fade)
 let mobileBalls = [];
 
 // We'll use an HTML button to request motion permission on iOS.
 let permissionButton;
 
 // We'll store a reference to the top wall so we can temporarily remove it.
-let mobileTopWall;
+let mobileTopWall;  // Declared only once (global)
 
 // --------------------------------------------------------------------------
 // p5.js Setup & Draw
 // --------------------------------------------------------------------------
-let myFont;
 function preload() {
   myFont = loadFont("Geist UltraLight.otf");
 }
@@ -522,10 +524,8 @@ class CenterArrowBall {
 }
 
 // ===========================================================================
-// MOBILE MODE (State Machine Implementation with HTML Button & Top Wall Control)
+// MOBILE MODE (State Machine Implementation with HTML Button & Top Wall)
 // ===========================================================================
-let mobileTopWall; // Global reference to the top wall
-
 function setupMobile() {
   // Create a canvas for mobile mode.
   createCanvas(windowWidth, windowHeight);
@@ -537,6 +537,7 @@ function setupMobile() {
   // Create walls around the screen, and store the top wall reference.
   let group = Composite.create();
   let thick = 200;
+  // Do not re-declare mobileTopWall here, just assign to it.
   mobileTopWall = Bodies.rectangle(width/2, -thick/2, width + thick*2, thick, { isStatic: true });
   let bottomWall = Bodies.rectangle(width/2, height + thick/2, width + thick*2, thick, { isStatic: true });
   let leftWall = Bodies.rectangle(-thick/2, height/2, thick, height + thick*2, { isStatic: true });
@@ -544,7 +545,7 @@ function setupMobile() {
   Composite.add(group, [mobileTopWall, bottomWall, leftWall, rightWall]);
   World.add(mobileWorld, group);
   
-  // Create a static center circle for collision (if desired).
+  // Create a static center circle (for collision, if desired).
   let radius = min(width, height) * 0.35;
   mobileCircleBody = Bodies.circle(width/2, height/2, radius, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
@@ -557,7 +558,7 @@ function setupMobile() {
   bgColorTo = [...regularBackgroundColor];
   console.log("Mobile setup complete. State:", mobileState);
   
-  // Create an HTML button for motion permission.
+  // Create an HTML button for motion permission (only if required).
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
     permissionButton = createButton(enableMotionText);
@@ -606,7 +607,7 @@ function drawMobile() {
 
 function mousePressedMobile() {
   if (mobileState === "ENABLE_MOTION") {
-    // Do nothing here; the HTML button handles permission.
+    // Do nothing; the HTML button handles the permission.
     return;
   }
   if (mobileState === "FADING_TO_TEXT") return;
@@ -702,7 +703,7 @@ function createMobileWalls() {
 }
 
 function spawnLetterBallsFromAbove() {
-  // Temporarily remove the top wall so balls can fall in.
+  // Remove the top wall so balls can fall in.
   if (mobileTopWall) {
     Composite.remove(mobileWorld, mobileTopWall);
   }
@@ -712,7 +713,7 @@ function spawnLetterBallsFromAbove() {
       createMobileLetterBall(letters[i], true);
     }
   }
-  // After 3 seconds, re-add the top wall to confine the balls.
+  // After 3 seconds, re-add the top wall.
   setTimeout(function(){
     if (mobileTopWall) {
       Composite.add(mobileWorld, mobileTopWall);
