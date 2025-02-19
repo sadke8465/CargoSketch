@@ -23,7 +23,6 @@ function findExactSubstringIndices(fullText, sub) {
   let result = [];
   let matchIndex = 0;
   let subLen = sub.length;
-
   for (let i = 0; i < fullText.length; i++) {
     if (matchIndex >= subLen) break;
     let cFull = fullText[i];
@@ -46,7 +45,7 @@ function isInsideInteractiveArea(mx, my) {
 // MATTER.JS ALIASES
 // --------------------------------------------------------------------------
 const Engine = Matter.Engine;
-const World = Matter.World;
+const World  = Matter.World;
 const Bodies = Matter.Bodies;
 const Composite = Matter.Composite;
 
@@ -62,17 +61,12 @@ let mobileEngine, mobileWorld;
 // --------------------------------------------------------------------------
 // DESKTOP MODE GLOBALS
 // --------------------------------------------------------------------------
-
-// We'll define references used in Desktop mode:
 let wallComposite;
 let centerArrowBall;
 let previewBody;
 let oldMousePos = { x: 0, y: 0 };
-
-// IMPORTANT: Define ghostBallScale here to avoid ReferenceError
 let ghostBallScale = 0; // starts invisible
 
-// Desktop phrase / highlight
 let phrase = 
 `Hey, I’m Noam Sadi, a 
 multidisciplinary designer.
@@ -95,9 +89,7 @@ const rightPanelRefH = 770;
 const gapRef = 32;
 const marginLeftRightRef = 213;
 const marginTopBottomRef = 174;
-
-let scaleFactor;
-let containerW, containerH, containerX, containerY;
+let scaleFactor, containerW, containerH, containerX, containerY;
 let leftPanelX, leftPanelY, leftPanelW, leftPanelH;
 let rightPanelX, rightPanelY, rightPanelW, rightPanelH;
 let phraseX, phraseY, phrasePadding;
@@ -110,7 +102,6 @@ let ballInitialVelocitySpeed = 7;
 let ballInitialVelocityAngle;
 let ballInitialVelocityAngleMAX = -70;
 let ballInitialVelocityAngleMIN = -120;
-
 let desktopBalls = [];
 let isFadingBalls = false;
 let fadeBallsStartTime = 1.5;
@@ -128,7 +119,6 @@ let arrowGlyphColor  = [255];
 let ghostBallFill    = [127, 50];
 let ghostTextFill    = [0, 50];
 let interactiveOutlineColor = [170];
-
 // Desktop physics
 let physicsConfigDesktop = {
   gravity: 0.8,
@@ -140,19 +130,45 @@ let physicsConfigDesktop = {
 let arrowEaseDuration = 0.5;
 
 // --------------------------------------------------------------------------
-// MOBILE MODE GLOBALS
+// MOBILE MODE GLOBALS & STYLING VARIABLES
 // --------------------------------------------------------------------------
-let mobileBalls = [];     // We'll store the 24 "NOAMSADI" letters
-let mobileCircleBody;     // A large static circle in the center
-let deviceWalls;          // The walls at the edges of the mobile screen
-let mobileGravityScale = 0.002; // Tweak to control tilt sensitivity
 
-// We'll store the text that appears in the circle
-let mobileCircleText = `This site is best viewed on a desktop device
+// Styling for letter balls:
+let letterBallSize = 40;            // radius
+let letterBallTextSize = 32;
+let letterBallColor = [170];
+let letterBallTextColor = [0];
 
-☺
+// Styling for final text circle:
+let textBallSize = 180;             // radius
+let textBallColor = [255];
+let textBallTextSize = 20;
+let textBallTextColor = [0];
 
-Click here to contact!`;
+// Styling for "Enable Motion" circle (its size is same as textBallSize)
+let enableMotionBallColor = [255];
+let enableMotionTextColor = [0];
+let enableMotionText = "Enable Motion";
+
+// Background colors:
+let enableMotionBackgroundColor = [80];
+let regularBackgroundColor = [255,235,59];
+
+// Final text to show inside the final text circle:
+let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
+
+// Mobile state machine: "ENABLE_MOTION", "FADING_TO_TEXT", "SHOW_TEXT_BALL"
+let mobileState = "ENABLE_MOTION";
+let fadeDuration = 1.0; // seconds
+let fadeStartTime = 0;
+let enableMotionAlpha = 255;
+let finalTextAlpha = 0;
+let bgColorFrom = [...enableMotionBackgroundColor];
+let bgColorTo   = [...regularBackgroundColor];
+
+// We'll store the letter balls (to be spawned after fade)
+let mobileBalls = [];
+// (mobileCircleBody is not used for drawing final text, we draw circles via p5)
 
 // --------------------------------------------------------------------------
 // p5.js & Font
@@ -164,17 +180,14 @@ function preload() {
 
 function setup() {
   textFont(myFont);
-
-  // Detect if mobile
   MOBILE_MODE = isMobileDevice();
   console.log("User agent:", navigator.userAgent);
   console.log("Detected mobile?", MOBILE_MODE);
-
+  
   if (MOBILE_MODE) {
-    // MOBILE => create a canvas for mobile
+    // For mobile, let setupMobile() create the canvas
     setupMobile();
   } else {
-    // DESKTOP => create a canvas for desktop
     createCanvas(windowWidth, windowHeight);
     setupDesktop();
   }
@@ -184,76 +197,52 @@ function draw() {
   if (MOBILE_MODE) {
     drawMobile();
   } else {
-    // Desktop background
     background(...backgroundColor);
     drawDesktop();
   }
 }
 
 // ===========================================================================
-// DESKTOP MODE
+// DESKTOP MODE (unchanged)
 // ===========================================================================
 function setupDesktop() {
   desktopEngine = Engine.create();
   desktopWorld = desktopEngine.world;
   desktopEngine.world.gravity.y = physicsConfigDesktop.gravity;
-
-  // Initialize letter fade values
   for (let i = 0; i < phrase.length; i++) {
     letterAlphas[i] = 51;
     letterSpawnTimes[i] = null;
   }
-  // Find highlight indices
   highlightIndices = findExactSubstringIndices(phrase, substringToHighlight);
-
-  updateLayout(); // compute layout variables
-
-  // Create walls for the left panel
+  updateLayout();
   wallComposite = createRectWalls(leftPanelCenterX, leftPanelCenterY, leftPanelW, leftPanelH);
   World.add(desktopWorld, wallComposite);
-
-  // Create center arrow ball
   centerArrowBall = new CenterArrowBall(leftPanelCenterX, leftPanelCenterY, 40 * scaleFactor);
   World.add(desktopWorld, centerArrowBall.body);
-
-  // Create ghost ball
   previewBody = Bodies.circle(
     mouseX - ghostBallOffset.x, 
     mouseY - ghostBallOffset.y, 
-    35 * scaleFactor, {
-      restitution: 1.5,
-      frictionAir: 0,
-      inertia: Infinity
-    }
+    35 * scaleFactor, { restitution: 1.5, frictionAir: 0, inertia: Infinity }
   );
   World.add(desktopWorld, previewBody);
-  
   oldMousePos.x = mouseX - ghostBallOffset.x;
   oldMousePos.y = mouseY - ghostBallOffset.y;
 }
 
 function drawDesktop() {
-  // Two panels
   noStroke();
   fill(255, 255, 0);
   rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
   fill(255);
   rect(rightPanelX, rightPanelY, rightPanelW, rightPanelH);
-
-  // Update engine
   Engine.update(desktopEngine);
-
-  // Update ghost ball
   updateGhostBallDesktop();
   updateGhostBallScaleDesktop();
-
-  // Fade out logic
   let fadeBallsAlpha = 1;
   if (isFadingBalls) {
     let nowSec = millis() / 1000;
     let t = (nowSec - fadeBallsStartTime) / fadeBallsDuration;
     if (t >= 1) {
-      // Remove all
       for (let lb of desktopBalls) {
         World.remove(desktopWorld, lb.body);
       }
@@ -269,43 +258,29 @@ function drawDesktop() {
       fadeBallsAlpha = 1 - t; 
     }
   }
-
   for (let lb of desktopBalls) {
     lb.show(fadeBallsAlpha);
   }
-
-  // Arrow ball
   centerArrowBall.updateAngle(arrowEaseDuration);
   centerArrowBall.show();
-
-  // Preview ball
   drawPreviewBallDesktop();
-
-  // Update letter fade
   updateLetterFadeDesktop();
-
-  // Draw phrase
   drawPhraseDesktop();
 }
 
-// DESKTOP: Mouse Pressed
 function mousePressed() {
   if (MOBILE_MODE) {
-    // If mobile, handle the circle link
     mousePressedMobile();
     return;
   }
-  // DESKTOP
   if (isFadingBalls) return;
   if (!isInsideInteractiveArea(mouseX - ballSpawnOffset.x, mouseY - ballSpawnOffset.y)) return;
-  
   if (phraseIndex < phrase.length) {
     let c = phrase[phraseIndex];
     let upperC = c.toUpperCase();
     createLetterBallDesktop(mouseX - ballSpawnOffset.x, mouseY - ballSpawnOffset.y, upperC);
     letterSpawnTimes[phraseIndex] = millis() / 1000;
     phraseIndex++;
-
     if (phraseIndex === phrase.length) {
       startFadingBallsDesktop();
     }
@@ -317,7 +292,6 @@ function startFadingBallsDesktop() {
   fadeBallsStartTime = millis() / 1000;
 }
 
-// DESKTOP: Create a letter ball
 function createLetterBallDesktop(x, y, letter) {
   let options = {
     friction: physicsConfigDesktop.friction,
@@ -329,17 +303,13 @@ function createLetterBallDesktop(x, y, letter) {
   let lb = new LetterBall(body, letter, phraseIndex);
   desktopBalls.push(lb);
   World.add(desktopWorld, body);
-
-  // random angle velocity
   ballInitialVelocityAngle = random(ballInitialVelocityAngleMIN, ballInitialVelocityAngleMAX);
   let velX = ballInitialVelocitySpeed * scaleFactor * cos(radians(ballInitialVelocityAngle));
   let velY = ballInitialVelocitySpeed * scaleFactor * sin(radians(ballInitialVelocityAngle));
   Matter.Body.setVelocity(body, { x: velX, y: velY });
-  
   centerArrowBall.setTargetBall(lb);
 }
 
-// DESKTOP: Ghost ball updates
 function updateGhostBallDesktop() {
   let newPos = { 
     x: mouseX - ghostBallOffset.x, 
@@ -354,7 +324,7 @@ function updateGhostBallDesktop() {
 }
 
 function updateGhostBallScaleDesktop() {
-  let inside = isInsideInteractiveArea(mouseX - ghostBallOffset.x, mouseY - ballSpawnOffset.y);
+  let inside = isInsideInteractiveArea(mouseX - ghostBallOffset.x, mouseY - ghostBallOffset.y);
   if (inside) {
     ghostBallScale = lerp(ghostBallScale, 1, 0.15);
   } else {
@@ -371,7 +341,6 @@ function drawPreviewBallDesktop() {
   noStroke();
   fill(...ghostBallFill);
   ellipse(0, 0, 60 * scaleFactor);
-  
   if (phraseIndex < phrase.length) {
     let nextLetter = phrase[phraseIndex].toUpperCase();
     fill(...ghostTextFill);
@@ -385,28 +354,23 @@ function drawPreviewBallDesktop() {
   pop();
 }
 
-// DESKTOP: Layout & walls
 function updateLayout() {
   scaleFactor = min(windowWidth / refW, windowHeight / refH);
   containerW = refW * scaleFactor;
   containerH = refH * scaleFactor;
   containerX = (windowWidth - containerW) / 2;
   containerY = (windowHeight - containerH) / 2;
-  
   leftPanelX = containerX + marginLeftRightRef * scaleFactor;
   leftPanelY = containerY + marginTopBottomRef * scaleFactor;
   leftPanelW = leftPanelRefW * scaleFactor;
   leftPanelH = leftPanelRefH * scaleFactor;
-  
   rightPanelX = leftPanelX + leftPanelW + gapRef * scaleFactor;
   rightPanelY = containerY + marginTopBottomRef * scaleFactor;
   rightPanelW = rightPanelRefW * scaleFactor;
   rightPanelH = rightPanelRefH * scaleFactor;
-  
   phrasePadding = 20 * scaleFactor;
   phraseX = rightPanelX + phrasePadding;
   phraseY = rightPanelY + phrasePadding;
-  
   leftPanelCenterX = leftPanelX + leftPanelW / 2;
   leftPanelCenterY = leftPanelY + leftPanelH / 2;
 }
@@ -414,27 +378,21 @@ function updateLayout() {
 function createRectWalls(cx, cy, w, h) {
   let group = Composite.create();
   let thick = 100 * scaleFactor;
-  
   let halfW = w / 2;
   let halfH = h / 2;
-  
   let topWall    = Bodies.rectangle(cx, cy - halfH - thick / 2, w + 2 * thick, thick, { isStatic: true });
   let bottomWall = Bodies.rectangle(cx, cy + halfH + thick / 2, w + 2 * thick, thick, { isStatic: true });
   let leftWall   = Bodies.rectangle(cx - halfW - thick / 2, cy, thick, h + 2 * thick, { isStatic: true });
   let rightWall  = Bodies.rectangle(cx + halfW + thick / 2, cy, thick, h + 2 * thick, { isStatic: true });
-  
   Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
   return group;
 }
 
-// DESKTOP: phrase & fade
 function drawPhraseDesktop() {
   textSize(20 * scaleFactor);
   textAlign(LEFT, TOP);
-  
   let lines = phrase.split("\n");
   let globalIndex = 0;
-  
   let y = phraseY;
   for (let line of lines) {
     let x = phraseX;
@@ -447,7 +405,6 @@ function drawPhraseDesktop() {
       x += w;
       globalIndex++;
     }
-    // skip \n
     globalIndex++;
     y += 30 * scaleFactor;
   }
@@ -465,7 +422,6 @@ function updateLetterFadeDesktop() {
   }
 }
 
-// Desktop: letter ball class
 class LetterBall {
   constructor(body, letter, phraseIdx) {
     this.body = body;
@@ -476,18 +432,15 @@ class LetterBall {
   show(fadeAlpha=1) {
     let pos = this.body.position;
     let angle = this.body.angle;
-    
     let isHighlight = highlightIndices.includes(this.phraseIdx);
     let ballFill = isHighlight ? highlightBallFill : defaultBallFill;
     let textFill = isHighlight ? highlightTextFill : defaultTextFill;
-    
     push();
     translate(pos.x, pos.y);
     rotate(angle);
     noStroke();
     fill(...ballFill, 255*fadeAlpha);
     ellipse(0, 0, this.r * 2);
-    
     fill(...textFill, 255*fadeAlpha);
     textSize(this.r*0.8);
     let w = textWidth(this.letter);
@@ -499,7 +452,6 @@ class LetterBall {
   }
 }
 
-// DESKTOP: center arrow
 class CenterArrowBall {
   constructor(x, y, r) {
     this.r = r;
@@ -510,7 +462,6 @@ class CenterArrowBall {
     this.easingStartTime = 0;
     this.easeFromAngle = 0;
   }
-  
   setTargetBall(letterBall) {
     this.target = letterBall;
     this.startEasing();
@@ -524,7 +475,6 @@ class CenterArrowBall {
     this.easingStartTime = millis() / 1000;
     this.easeFromAngle = this.currentAngle;
   }
-  
   updateAngle(easeDur) {
     let pos = this.body.position;
     let nowSec = millis() / 1000;
@@ -535,7 +485,6 @@ class CenterArrowBall {
       let bPos = this.target.body.position;
       liveAngle = atan2(bPos.y - pos.y, bPos.x - pos.x);
     }
-    
     if (this.arrowState === "EASING") {
       let t = (nowSec - this.easingStartTime) / easeDur;
       if (t >= 1) {
@@ -548,7 +497,6 @@ class CenterArrowBall {
       this.currentAngle = liveAngle;
     }
   }
-  
   show() {
     let pos = this.body.position;
     push();
@@ -557,7 +505,6 @@ class CenterArrowBall {
     noStroke();
     fill(...arrowCircleColor);
     ellipse(0, 0, this.r * 2);
-    
     fill(...arrowGlyphColor);
     let arrowGlyph = "→";
     textSize(this.r);
@@ -571,120 +518,186 @@ class CenterArrowBall {
 }
 
 // ===========================================================================
-// MOBILE MODE
+// MOBILE MODE (State Machine)
 // ===========================================================================
 function setupMobile() {
-  // Create a canvas specifically for mobile
+  // Create a canvas for mobile mode only once.
   createCanvas(windowWidth, windowHeight);
 
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
-
-  // Set gravity initially to zero; we'll update via device orientation events.
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
 
-  // Create walls around the entire screen.
+  // Create walls around the screen.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
 
-  // Create a large static circle in the center that the balls will collide with.
-  let radius = min(width, height) * 0.35;
-  mobileCircleBody = Bodies.circle(width / 2, height / 2, radius, { isStatic: true });
-  World.add(mobileWorld, mobileCircleBody);
+  // (Optional) We do not add a Matter body for the final text circle since we draw it in p5.
 
-  // Create 3 sets of "NOAMSADI" (24 balls total).
-  let letters = "NOAMSADI";
-  for (let s = 0; s < 3; s++) {
-    for (let i = 0; i < letters.length; i++) {
-      createMobileLetterBall(letters[i]);
-    }
-  }
+  // Set initial state
+  mobileState = "ENABLE_MOTION";
+  enableMotionAlpha = 255;
+  finalTextAlpha = 0;
 
-  // Listen to device orientation.
-  // For iOS 13+ devices, request permission.
+  // For iOS 13+ permission, we do not auto-request; user must tap the circle.
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then((response) => {
-        if (response === "granted") {
-          window.addEventListener("deviceorientation", handleDeviceOrientation, true);
-        }
-      })
-      .catch(console.error);
+    // Do nothing here; wait for tap.
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
   }
 }
 
 function drawMobile() {
-  background("#FFEB3B"); // Bright yellow background.
-  Engine.update(mobileEngine);
-
-  // Draw the big center circle.
-  fill(255);
-  noStroke();
-  let radius = min(width, height) * 0.35;
-  ellipse(width / 2, height / 2, radius * 2);
-
-  // Draw the text inside the circle.
-  fill(0);
-  textSize(radius * 0.07);
-  textAlign(CENTER, CENTER);
-  text(mobileCircleText, width / 2, height / 2);
-
-  // Draw all mobile letter balls.
-  for (let b of mobileBalls) {
-    b.show();
+  // State machine for mobile mode.
+  if (mobileState === "ENABLE_MOTION") {
+    // Show enable motion state
+    background(...enableMotionBackgroundColor);
+    drawEnableMotionCircle(enableMotionAlpha);
+  } else if (mobileState === "FADING_TO_TEXT") {
+    let t = (millis() - fadeStartTime) / (fadeDuration * 1000);
+    if (t > 1) t = 1;
+    // Fade background from enableMotionBackgroundColor to regularBackgroundColor
+    let r = lerp(bgColorFrom[0], bgColorTo[0], t);
+    let g = lerp(bgColorFrom[1], bgColorTo[1], t);
+    let b = lerp(bgColorFrom[2], bgColorTo[2], t);
+    background(r, g, b);
+    enableMotionAlpha = 255 * (1 - t);
+    finalTextAlpha = 255 * t;
+    drawEnableMotionCircle(enableMotionAlpha);
+    drawFinalTextCircle(finalTextAlpha);
+    if (t >= 1) {
+      mobileState = "SHOW_TEXT_BALL";
+      spawnLetterBallsFromAbove();
+    }
+  } else if (mobileState === "SHOW_TEXT_BALL") {
+    background(...regularBackgroundColor);
+    drawFinalTextCircle(255);
+    // Draw letter balls
+    for (let b of mobileBalls) {
+      b.show();
+    }
   }
 }
 
-// When the user taps the circle, open the mailto link.
 function mousePressedMobile() {
-  let radius = min(width, height) * 0.35;
-  let dx = mouseX - width / 2;
-  let dy = mouseY - height / 2;
-  if (dx * dx + dy * dy <= radius * radius) {
-    window.location.href = "mailto:sadke8465@gmail.com";
+  // In ENABLE_MOTION state, tapping the enable-motion circle triggers permission request.
+  if (mobileState === "ENABLE_MOTION") {
+    let d = dist(mouseX, mouseY, width/2, height/2);
+    if (d <= textBallSize) { // circle radius equals textBallSize
+      requestMotionPermission();
+    }
+    return;
+  }
+  // In FADING_TO_TEXT, do nothing.
+  if (mobileState === "FADING_TO_TEXT") return;
+  // In SHOW_TEXT_BALL, tapping the final text circle opens mailto.
+  if (mobileState === "SHOW_TEXT_BALL") {
+    let d = dist(mouseX, mouseY, width/2, height/2);
+    if (d <= textBallSize) {
+      window.location.href = "mailto:sadke8465@gmail.com";
+    }
   }
 }
 
-// Handle device orientation to update the mobile gravity.
-function handleDeviceOrientation(event) {
-  let gamma = event.gamma; // left-right tilt.
-  let beta  = event.beta;  // front-back tilt.
-  // Increase the scale so even subtle tilts produce noticeable acceleration.
-  mobileEngine.world.gravity.x = gamma * 0.05;
-  mobileEngine.world.gravity.y = beta  * 0.05;
+function requestMotionPermission() {
+  if (typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function") {
+    DeviceOrientationEvent.requestPermission()
+      .then((response) => {
+        if (response === "granted") {
+          window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+          startFadeToText();
+        } else {
+          console.log("Motion permission denied.");
+        }
+      })
+      .catch(console.error);
+  } else {
+    window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+    startFadeToText();
+  }
 }
 
-// Create walls around the device edges.
+function startFadeToText() {
+  mobileState = "FADING_TO_TEXT";
+  fadeStartTime = millis();
+  // Set initial colors for fading.
+  bgColorFrom = [...enableMotionBackgroundColor];
+  bgColorTo = [...regularBackgroundColor];
+}
+
+function drawEnableMotionCircle(alphaVal) {
+  push();
+  fill(...enableMotionBallColor, alphaVal);
+  noStroke();
+  // Draw circle with diameter = 2 * textBallSize.
+  ellipse(width/2, height/2, textBallSize * 2);
+  fill(...enableMotionTextColor, alphaVal);
+  textAlign(CENTER, CENTER);
+  textSize(textBallTextSize);
+  text(enableMotionText, width/2, height/2);
+  pop();
+}
+
+function drawFinalTextCircle(alphaVal) {
+  push();
+  fill(...textBallColor, alphaVal);
+  noStroke();
+  ellipse(width/2, height/2, textBallSize * 2);
+  fill(...textBallTextColor, alphaVal);
+  textAlign(CENTER, CENTER);
+  textSize(textBallTextSize);
+  text(finalTextBallText, width/2, height/2);
+  pop();
+}
+
+function handleDeviceOrientation(event) {
+  // Only update gravity if permission was granted (this is triggered after request)
+  let gamma = event.gamma; // left-right tilt.
+  let beta = event.beta;   // front-back tilt.
+  mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.5, 0.5);
+  mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
+}
+
 function createMobileWalls() {
   let group = Composite.create();
-  let thick = 200; // Thickness of walls.
-  let topWall    = Bodies.rectangle(width / 2, -thick / 2, width + thick*2, thick, { isStatic: true });
-  let bottomWall = Bodies.rectangle(width / 2, height + thick / 2, width + thick*2, thick, { isStatic: true });
-  let leftWall   = Bodies.rectangle(-thick / 2, height / 2, thick, height + thick*2, { isStatic: true });
-  let rightWall  = Bodies.rectangle(width + thick / 2, height / 2, thick, height + thick*2, { isStatic: true });
+  let thick = 200;
+  let topWall = Bodies.rectangle(width/2, -thick/2, width + thick*2, thick, { isStatic: true });
+  let bottomWall = Bodies.rectangle(width/2, height + thick/2, width + thick*2, thick, { isStatic: true });
+  let leftWall = Bodies.rectangle(-thick/2, height/2, thick, height + thick*2, { isStatic: true });
+  let rightWall = Bodies.rectangle(width + thick/2, height/2, thick, height + thick*2, { isStatic: true });
   Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
   return group;
 }
 
-// Create a mobile letter ball with updated physics parameters.
-function createMobileLetterBall(letter) {
-  let r = 25; // Ball radius.
+function spawnLetterBallsFromAbove() {
+  // Spawn 3 sets of "NOAMSADI" (24 balls)
+  let letters = "NOAMSADI";
+  for (let s = 0; s < 3; s++) {
+    for (let i = 0; i < letters.length; i++) {
+      createMobileLetterBall(letters[i], true);
+    }
+  }
+}
+
+function createMobileLetterBall(letter, spawnAbove=false) {
+  let r = letterBallSize;
   let x = random(r, width - r);
   let y = random(r, height - r);
+  if (spawnAbove) {
+    y = -r * 2; // start above screen
+  }
   let body = Bodies.circle(x, y, r, {
-    restitution: 0.9,    // High bounce.
-    frictionAir: 0.001   // Very little air friction.
+    restitution: 0.95,
+    frictionAir: 0.00001
   });
   let mb = new MobileLetterBall(body, letter, r);
   mobileBalls.push(mb);
   World.add(mobileWorld, body);
 }
 
-// Mobile letter ball class.
 class MobileLetterBall {
   constructor(body, letter, r) {
     this.body = body;
@@ -697,36 +710,13 @@ class MobileLetterBall {
     push();
     translate(pos.x, pos.y);
     rotate(angle);
-    fill(170);
+    fill(...letterBallColor);
     noStroke();
     ellipse(0, 0, this.r * 2);
-    fill(0);
-    textSize(this.r);
+    fill(...letterBallTextColor);
     textAlign(CENTER, CENTER);
+    textSize(letterBallTextSize);
     text(this.letter, 0, 0);
     pop();
-  }
-}
-
-// Also handle the mobile tap if user is in mobile mode
-function mousePressed() {
-  if (MOBILE_MODE) {
-    mousePressedMobile();
-    return;
-  }
-  // otherwise do the desktop logic
-  if (isFadingBalls) return;
-  if (!isInsideInteractiveArea(mouseX - ballSpawnOffset.x, mouseY - ballSpawnOffset.y)) return;
-  
-  if (phraseIndex < phrase.length) {
-    let c = phrase[phraseIndex];
-    let upperC = c.toUpperCase();
-    createLetterBallDesktop(mouseX - ballSpawnOffset.x, mouseY - ballSpawnOffset.y, upperC);
-    letterSpawnTimes[phraseIndex] = millis() / 1000;
-    phraseIndex++;
-
-    if (phraseIndex === phrase.length) {
-      startFadingBallsDesktop();
-    }
   }
 }
