@@ -569,8 +569,10 @@ class CenterArrowBall {
 // ... [All desktop mode code remains unchanged above]
 
 // ===========================================================================
-// MOBILE MODE (Revised for Strong, Continuous Gravity)
+// MOBILE MODE (Revised with Permission Button)
 // ===========================================================================
+let permissionButton; // Global variable for the permission button
+
 function setupMobile() {
   // Ensure full-screen canvas.
   noCanvas();
@@ -578,12 +580,11 @@ function setupMobile() {
 
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
-
   // Start with zero gravity; we'll update via orientation.
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
 
-  // Create walls around the screen.
+  // Create walls around the entire screen.
   deviceWalls = createMobileWalls();
   World.add(mobileWorld, deviceWalls);
 
@@ -600,23 +601,37 @@ function setupMobile() {
     }
   }
 
-  // Listen to device orientation.
+  // If the API requires permission (iOS 13+), create a button to request it.
   if (typeof DeviceOrientationEvent !== "undefined" &&
       typeof DeviceOrientationEvent.requestPermission === "function") {
-    DeviceOrientationEvent.requestPermission()
-      .then((response) => {
-        if (response === "granted") {
-          window.addEventListener("deviceorientation", handleDeviceOrientation, true);
-        }
-      })
-      .catch(console.error);
+    permissionButton = createButton("Enable Motion");
+    // Position the button roughly in the center.
+    permissionButton.position(width / 2 - 60, height / 2 - 20);
+    permissionButton.style("padding", "10px 20px");
+    permissionButton.mousePressed(requestMotionPermission);
   } else {
+    // Otherwise, simply add the event listener.
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
   }
 }
 
+function requestMotionPermission() {
+  DeviceOrientationEvent.requestPermission()
+    .then((response) => {
+      if (response === "granted") {
+        window.addEventListener("deviceorientation", handleDeviceOrientation, true);
+        if (permissionButton) {
+          permissionButton.hide();
+        }
+      } else {
+        console.log("Motion permission denied.");
+      }
+    })
+    .catch(console.error);
+}
+
 function drawMobile() {
-  background("#000000"); // Bright yellow background.
+  background("#FFEB3B"); // Bright yellow background.
   Engine.update(mobileEngine);
 
   // Draw the big circle in the center.
@@ -638,7 +653,7 @@ function drawMobile() {
 }
 
 function mousePressedMobile() {
-  // If user taps inside the center circle, open mailto.
+  // When the user taps inside the center circle, open the mailto link.
   let radius = min(width, height) * 0.35;
   let dx = mouseX - width / 2;
   let dy = mouseY - height / 2;
@@ -652,7 +667,6 @@ function mousePressedMobile() {
 function handleDeviceOrientation(event) {
   let gamma = event.gamma; // left-right tilt.
   let beta = event.beta;   // front-back tilt.
-  // Map the tilt angles to a gravity range (-0.5 to 0.5).
   mobileEngine.world.gravity.x = map(gamma, -90, 90, -0.5, 0.5);
   mobileEngine.world.gravity.y = map(beta, -90, 90, -0.5, 0.5);
 }
@@ -707,4 +721,3 @@ class MobileLetterBall {
     pop();
   }
 }
-
