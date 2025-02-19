@@ -154,7 +154,7 @@ let enableMotionBackgroundColor = [80];
 let regularBackgroundColor = [255, 235, 59];
 
 // Final text for final text circle:
-let finalTextBallText = "This site is best viewed on a desktop device\n\n☺\n\nClick here to contact!";
+let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
 // Mobile state machine states:
 // "ENABLE_MOTION": Show the enable motion button.
@@ -570,7 +570,10 @@ function setupMobile() {
     permissionButton.style('border-radius', '50%');
     permissionButton.style('font-size', textBallTextSize + 'px');
     permissionButton.position(width / 2 - textBallSize, height / 2 - textBallSize);
-    permissionButton.mousePressed(requestMotionPermission);
+    permissionButton.mousePressed((event) => {
+      event.stopPropagation();
+      requestMotionPermission();
+});
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
     window.addEventListener("devicemotion", handleDeviceMotion, true);
@@ -687,13 +690,17 @@ function drawFinalTextCircle(alphaVal) {
 // Handle device orientation: update gravity (stronger) and update the big circle's rotation.
 function handleDeviceOrientation(event) {
   if (!event.beta || !event.gamma || !event.alpha) return;
-  let gamma = event.gamma;
-  let beta = event.beta;
+  
+  // Calculate target angle (in radians)
+  let targetAngle = radians(event.alpha);
+  
+  // Ease the rotation: interpolate between current and target angle
+  // 0.1 is the easing factor (adjust as needed)
+  mobileBigCircleAngle = lerp(mobileBigCircleAngle, targetAngle, 0.1);
+  
   // Map gravity more strongly.
-  mobileEngine.world.gravity.x = map(gamma, -90, 90, -1, 1);
-  mobileEngine.world.gravity.y = map(beta, -90, 90, -1, 1);
-  // Update the rotation angle using the device's alpha value.
-  mobileBigCircleAngle = radians(event.alpha);
+  mobileEngine.world.gravity.x = map(event.gamma, -90, 90, -1, 1);
+  mobileEngine.world.gravity.y = map(event.beta, -90, 90, -1, 1);
 }
 
 // Handle device motion: apply extra forces on mobile balls when a shake/whip is detected.
