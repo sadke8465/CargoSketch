@@ -563,22 +563,22 @@ function setupMobile() {
   console.log("Mobile setup complete. State:", mobileState);
   
   // Request permission for device orientation and motion (for iOS 13+)
-  if (typeof DeviceOrientationEvent !== "undefined" &&
-      typeof DeviceOrientationEvent.requestPermission === "function") {
-    permissionButton = createButton(enableMotionText);
-    permissionButton.style('width', (textBallSize * 2) + 'px');
-    permissionButton.style('height', (textBallSize * 2) + 'px');
-    permissionButton.style('background-color', color(enableMotionBallColor));
-    permissionButton.style('color', color(enableMotionTextColor));
-    // Set the font to Geist UltraLight.
-    permissionButton.style("font-family", "Geist UltraLight");
-    permissionButton.style('border', 'none');
-    permissionButton.style('border-radius', '50%');
-    permissionButton.style('font-size', textBallTextSize + 'px');
-    permissionButton.position(width / 2 - textBallSize, height / 2 - textBallSize);
-    permissionButton.mousePressed((event) => {
-      event.stopPropagation();
-      requestMotionPermission();
+permissionButton = createButton(enableMotionText);
+permissionButton.style('width', (textBallSize * 2) + 'px');
+permissionButton.style('height', (textBallSize * 2) + 'px');
+permissionButton.style('background-color', color(enableMotionBallColor));
+permissionButton.style('color', color(enableMotionTextColor));
+permissionButton.style('border', 'none');
+permissionButton.style('border-radius', '50%');
+permissionButton.style('font-size', textBallTextSize + 'px');
+// Set the font-family (try using quotes and fallback)
+permissionButton.style("font-family", '"Geist UltraLight", sans-serif');
+// Alternatively, force it on the element:
+// permissionButton.elt.style.fontFamily = '"Geist UltraLight", sans-serif';
+permissionButton.position(width / 2 - textBallSize, height / 2 - textBallSize);
+permissionButton.mousePressed((event) => {
+  event.stopPropagation();
+  requestMotionPermission();
 });
   } else {
     window.addEventListener("deviceorientation", handleDeviceOrientation, true);
@@ -783,7 +783,7 @@ class MobileLetterBall {
     textAlign(CENTER, CENTER);
     textSize(letterBallTextSize);
     // Move text upward a few pixels.
-    text(this.letter, 0, -this.r * 0.2);
+    text(this.letter, 0, -this.r * 0.1);
     pop();
   }
 }
