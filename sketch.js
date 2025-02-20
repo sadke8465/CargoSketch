@@ -3,7 +3,27 @@
 // --------------------------------------------------------------------------
 // HELPER FUNCTIONS & GLOBAL DETECTION
 // --------------------------------------------------------------------------
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  updateLayout();
 
+  if (!MOBILE_MODE) {
+    // Remove and recreate the static walls
+    Composite.remove(desktopWorld, wallComposite);
+    wallComposite = createRectWalls(leftPanelCenterX, leftPanelCenterY, leftPanelW, leftPanelH);
+    World.add(desktopWorld, wallComposite);
+    
+    // Remove the old center arrow ball and create a new one with updated scale
+    Composite.remove(desktopWorld, centerArrowBall.body);
+    centerArrowBall = new CenterArrowBall(leftPanelCenterX, leftPanelCenterY, 40 * scaleFactor);
+    World.add(desktopWorld, centerArrowBall.body);
+    
+    // Update preview ball position (if needed)
+    Matter.Body.setPosition(previewBody, { x: mouseX - ghostBallOffset.x, y: mouseY - ghostBallOffset.y });
+    
+    // Update any other physics objects that depend on layout or scaleFactor here...
+  }
+}
 // 1) Detect if mobile device (simple check)
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
@@ -23,6 +43,8 @@ function lerpAngle(a0, a1, t) {
   while (diff > PI) diff -= TWO_PI;
   return a0 + diff * t;
 }
+
+
 
 // 3) Substring finder for desktop highlight
 function findExactSubstringIndices(fullText, sub) {
@@ -58,7 +80,20 @@ const Composite = Matter.Composite;
 // --------------------------------------------------------------------------
 // GLOBAL VARIABLES FOR MODES
 // --------------------------------------------------------------------------
+
 let MOBILE_MODE = false; // set true if on mobile
+
+// --------------------------------------------------------------------------
+// TEXT SCALE!!!!!!!!!!!!!!
+// --------------------------------------------------------------------------
+
+
+let TEXTSCALE = 17
+
+
+// --------------------------------------------------------------------------
+// TEXT SCALE!!!!!!!!!!!!!!
+// --------------------------------------------------------------------------
 
 // Matter.js engines/worlds
 let desktopEngine, desktopWorld;
@@ -67,6 +102,28 @@ let mobileEngine, mobileWorld;
 // --------------------------------------------------------------------------
 // DESKTOP MODE GLOBALS
 // --------------------------------------------------------------------------
+// Define your projects
+let projectIndex = [
+  {
+    name: "A Book on Books",
+    url: "project1.html",
+    glyph: "    ①  ",
+    tags: ["Book Design", "Archive"]
+  },
+  {
+    name: "Graduation Show Branding ",
+    url: "project2.html",
+    glyph: "    ②  ",
+    tags: ["Motion Design", "Generative", "Touchdesigner"]
+  },
+  {
+    name: "Wix Holidays Moving Posters",
+    url: "project3.html",
+    glyph: "    ③  ",
+    tags: ["Interactive Experience", "Creative Coding"]
+  }
+];
+
 let wallComposite;
 let centerArrowBall;
 let previewBody;
@@ -242,6 +299,7 @@ function setupDesktop() {
 }
 
 function drawDesktop() {
+  
   noStroke();
   fill(255, 255, 0);
   rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
@@ -278,9 +336,32 @@ function drawDesktop() {
   drawPreviewBallDesktop();
   updateLetterFadeDesktop();
   drawPhraseDesktop();
+  drawProjectIndex();
+
+  
 }
 
 function mousePressed() {
+  if (!MOBILE_MODE) {
+    // Check if a project in the index was clicked.
+    let indexTextSize = TEXTSCALE * scaleFactor;
+    for (let proj of projectIndex) {
+      // Calculate the bounding box of the text.
+      let projWidth = textWidth(proj.name);
+      let projHeight = indexTextSize;  // approximate height
+
+      // Check if the mouse is within this box.
+      if (
+        mouseX > proj.x && mouseX < proj.x + projWidth &&
+        mouseY > proj.y - projHeight && mouseY < proj.y
+      ) {
+        // Navigate to the project URL.
+        window.location.href = proj.url;
+        return; // Exit so other mousePressed actions don't fire.
+      }
+    }
+  }
+
   if (MOBILE_MODE) {
     mousePressedMobile();
     return;
@@ -305,23 +386,31 @@ function startFadingBallsDesktop() {
 }
 
 function createLetterBallDesktop(x, y, letter) {
+  // Randomize the radius between 20 and 40 (scaled)
+  let r = random(18, 30) * scaleFactor;
+  
   let options = {
     friction: physicsConfigDesktop.friction,
     frictionAir: physicsConfigDesktop.airDrag,
     density: physicsConfigDesktop.density,
     restitution: physicsConfigDesktop.restitution
   };
-  let body = Bodies.circle(x, y, 24 * scaleFactor, options);
-  let lb = new LetterBall(body, letter, phraseIndex);
+  
+  // Create the Matter.js body with the randomized radius.
+  let body = Bodies.circle(x, y, r, options);
+  
+  // Use the given letter from the phrase.
+  let lb = new LetterBall(body, letter, phraseIndex, r);
   desktopBalls.push(lb);
   World.add(desktopWorld, body);
+  
+  // Apply an initial velocity.
   ballInitialVelocityAngle = random(ballInitialVelocityAngleMIN, ballInitialVelocityAngleMAX);
   let velX = ballInitialVelocitySpeed * scaleFactor * cos(radians(ballInitialVelocityAngle));
   let velY = ballInitialVelocitySpeed * scaleFactor * sin(radians(ballInitialVelocityAngle));
   Matter.Body.setVelocity(body, { x: velX, y: velY });
   centerArrowBall.setTargetBall(lb);
 }
-
 function updateGhostBallDesktop() {
   let newPos = {
     x: mouseX - ghostBallOffset.x,
@@ -401,7 +490,7 @@ function createRectWalls(cx, cy, w, h) {
 }
 
 function drawPhraseDesktop() {
-  textSize(20 * scaleFactor);
+  textSize(TEXTSCALE * scaleFactor);
   textAlign(LEFT, TOP);
   let lines = phrase.split("\n");
   let globalIndex = 0;
@@ -422,6 +511,154 @@ function drawPhraseDesktop() {
   }
 }
 
+function drawProjectIndex() {
+  let indexTextSize = TEXTSCALE * scaleFactor;
+  textSize(indexTextSize);
+  textAlign(LEFT, TOP);
+  let arrowInitialOffset = 25 * scaleFactor; // arrow offset scales with scaleFactor
+
+  // Measure font metrics
+  let a = textAscent();
+  let d = textDescent();
+  let textHeight = a + d; // total vertical space for one line
+
+  let padding = 10 * scaleFactor;
+  // Place the index in the bottom-left of the right panel.
+  let baseX = rightPanelX + padding;
+  // Adjust vertical spacing to include scaleFactor in the constant spacing.
+  let lineSpacing = textHeight + (20 * scaleFactor);
+  
+  // Hitbox margin now scales with scaleFactor.
+  let hitMargin = 9 * scaleFactor;
+
+  // Compute total height for the index.
+  let totalHeight = projectIndex.length * lineSpacing;
+  let startY = rightPanelY + rightPanelH - padding - totalHeight;
+
+  // Pass 1: Determine hover states & bounding boxes
+  let anyHovered = false;
+  for (let i = 0; i < projectIndex.length; i++) {
+    let proj = projectIndex[i];
+
+    // Initialize animation properties if not already set.
+    if (proj.offset === undefined) proj.offset = 0;
+    if (proj.alpha === undefined) proj.alpha = 255;
+
+    // Y-position for this project line.
+    proj.y = startY + i * lineSpacing;
+
+    // Measure widths of each chunk:
+    let glyphW = textWidth(proj.glyph);
+    let nameW = textWidth(proj.name);
+    let tagsStr = " / " + proj.tags.join(" / ");
+    let tagsW = textWidth(tagsStr);
+
+    // Store total line width for bounding box.
+    proj.lineWidth = glyphW + 8 + nameW + 8 + tagsW; 
+    // (the "8" values are extra spaces between glyph, name, and tags)
+
+    // Calculate starting x for this line (plus animation offset).
+    let currentX = baseX + proj.offset;
+
+    // BOUNDING BOX for the entire line, with extra margin.
+    let boxX = currentX;
+    let boxY = proj.y - hitMargin;
+    let boxW = proj.lineWidth;
+    let boxH = textHeight + hitMargin * 2;
+
+    // Check if the mouse is within that box.
+    if (
+      mouseX >= boxX &&
+      mouseX <= boxX + boxW &&
+      mouseY >= boxY &&
+      mouseY <= boxY + boxH
+    ) {
+      proj.hovered = true;
+      anyHovered = true;
+    } else {
+      proj.hovered = false;
+    }
+  }
+
+  // Pass 2: Update animation for each project.
+  for (let proj of projectIndex) {
+    if (proj.textOffset === undefined) proj.textOffset = 0;
+    if (proj.arrowOffset === undefined) proj.arrowOffset = 0;
+
+    let targetTextOffset = 0;
+    let targetArrowOffset = 0;
+    
+    // Define target opacity values.
+    let targetGlyphAlpha = 255;
+    let targetNameAlpha = 255;
+    let targetTagsAlpha = 51; // Tags are faint by default
+
+    if (anyHovered) {
+      if (proj.hovered) {
+        targetGlyphAlpha = 255;
+        targetNameAlpha = 255;
+        targetTagsAlpha = 255;
+        targetTextOffset = 50;   // Slide text elements when hovered.
+        targetArrowOffset = 25;  // Arrow offset increases.
+      } else {
+        targetGlyphAlpha = 51;
+        targetNameAlpha = 51;
+        targetTagsAlpha = 51;
+        targetTextOffset = 0;
+        targetArrowOffset = 0;
+      }
+    }
+    
+    // Smoothly update offsets and opacities.
+    proj.textOffset = lerp(proj.textOffset, targetTextOffset, 0.2);
+    proj.arrowOffset = lerp(proj.arrowOffset, targetArrowOffset, 0.2);
+    proj.glyphAlpha = lerp(proj.glyphAlpha || 255, targetGlyphAlpha, 0.2);
+    proj.nameAlpha = lerp(proj.nameAlpha || 255, targetNameAlpha, 0.2);
+    proj.tagsAlpha = lerp(proj.tagsAlpha || 51, targetTagsAlpha, 0.2);
+  }
+
+  // Pass 3: Draw the index.
+  for (let proj of projectIndex) {
+    let lineX = baseX + proj.textOffset;
+    let lineY = proj.y;
+
+    // Draw the arrow for hovered projects.
+    if (proj.hovered) {
+      let arrow = "→  ";
+      let arrowW = textWidth(arrow);
+      let arrowX = (baseX + arrowInitialOffset) + proj.arrowOffset - arrowW;
+      fill(0, 255); // fully opaque arrow
+      text(arrow, arrowX, proj.y);
+    }
+    // Draw glyph.
+    fill(0, proj.glyphAlpha);
+    text(proj.glyph, lineX, lineY);
+
+    // Offset project name.
+    let glyphW = textWidth(proj.glyph);
+    let xAfterGlyph = lineX + glyphW + 8;
+
+    // Draw project name.
+    fill(0, proj.nameAlpha);
+    text(proj.name, xAfterGlyph, lineY);
+
+    // Offset for tags.
+    let nameW = textWidth(proj.name);
+    let xAfterName = xAfterGlyph + nameW + 8;
+
+    // Draw tags.
+    let tagsStr = " / " + proj.tags.join(" / ");
+    fill(0, proj.tagsAlpha);
+    text(tagsStr, xAfterName, lineY);
+  }
+  if (anyHovered) {
+    cursor(HAND);
+  } else {
+    cursor(ARROW);
+  }
+  
+}
+
 function updateLetterFadeDesktop() {
   let nowSec = millis() / 1000;
   for (let i = 0; i < phrase.length; i++) {
@@ -435,10 +672,10 @@ function updateLetterFadeDesktop() {
 }
 
 class LetterBall {
-  constructor(body, letter, phraseIdx) {
+  constructor(body, letter, phraseIdx, r) {
     this.body = body;
     this.letter = letter;
-    this.r = 24 * scaleFactor;
+    this.r = r; // use the randomized radius
     this.phraseIdx = phraseIdx;
   }
   show(fadeAlpha = 1) {
