@@ -1,5 +1,3 @@
-// sketch.js
-
 // --------------------------------------------------------------------------
 // HELPER FUNCTIONS & GLOBAL DETECTION
 // --------------------------------------------------------------------------
@@ -24,6 +22,7 @@ function windowResized() {
     // Update any other physics objects that depend on layout or scaleFactor here...
   }
 }
+
 // 1) Detect if mobile device (simple check)
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
@@ -34,9 +33,7 @@ function easeInOutQuad(t) {
   if (t < 0.5) return 2 * t * t;
   return -1 + (4 - 2 * t) * t;
 }
-function lerpAngle(a0, a1, amt) {
-  return a0 + (a1 - a0) * amt;
-}
+
 function lerpAngle(a0, a1, t) {
   let diff = a1 - a0;
   while (diff < -PI) diff += TWO_PI;
@@ -44,7 +41,15 @@ function lerpAngle(a0, a1, t) {
   return a0 + diff * t;
 }
 
+// Easing function for description fade (in/out sine)
+function easeInOutSine(t) {
+  return -(cos(PI * t) - 1) / 2;
+}
 
+// NEW: Easing function for gallery scroll transition (in/out quint)
+function easeInOutQuint(t) {
+  return t < 0.5 ? 16 * t*t*t*t*t : 1 - Math.pow(-2 * t + 2, 5) / 2;
+}
 
 // 3) Substring finder for desktop highlight
 function findExactSubstringIndices(fullText, sub) {
@@ -80,22 +85,46 @@ const Composite = Matter.Composite;
 // --------------------------------------------------------------------------
 // GLOBAL VARIABLES FOR MODES
 // --------------------------------------------------------------------------
-
 let MOBILE_MODE = false; // set true if on mobile
+let transitionOffsetStart = 100; // Starting offset (adjust as needed)
+let transitionOffset = 0;        // This will be computed during the transition
 
 // --------------------------------------------------------------------------
 // TEXT SCALE!!!!!!!!!!!!!!
 // --------------------------------------------------------------------------
-
-
-let TEXTSCALE = 17
-
+let TEXTSCALE = 17;
+let expandedImageIndex = 0;   // The index of the expanded image in projectGalleryImages
+let galleryImageBoxes = [];   // To store bounding boxes for gallery images (used for click detection)
+let targetScrollOffset = 0; // The scroll offset we want to reach
 
 // --------------------------------------------------------------------------
-// TEXT SCALE!!!!!!!!!!!!!!
+// Additional globals for left panel transition and gallery view:
 // --------------------------------------------------------------------------
+let leftPanelMode = "physics";  // "physics" | "transition" | "gallery" | "expanded"
+let physicsAlpha = 255;         // Opacity for physics simulation (0-255)
+let galleryAlpha = 0;           // Opacity for gallery (0-255)
+let fadeStartTime = null;       // Time when fade transition started
+let fadeDuration = 1.0;         // Duration of fade transition (seconds)
+let activeProject = null;       // The project that is currently active
+let projectGalleryImages = [];  // Array of gallery media items (each with type, src, etc.)
+let scrollOffset = 0;           // Vertical scroll offset for the gallery
 
+// New globals for project description overlay:
+let projectDescriptionFadeStartTime = 0;  // time in seconds when fade started
+let projectDescriptionFadeDuration = 1.0;   // Fade duration in seconds
+
+// NEW globals for gallery transition (when switching projects)
+let galleryTransitionActive = false;
+let galleryTransitionStartTime = 0;
+let galleryTransitionDuration = 1; // seconds
+let oldGalleryImages = [];  // holds outgoing project media
+let newGalleryImages = [];  // holds incoming project media
+let oldScrollOffset = 0;    // scroll offset at moment of transition
+let upcomingProject = null; // new project to switch to
+
+// --------------------------------------------------------------------------
 // Matter.js engines/worlds
+// --------------------------------------------------------------------------
 let desktopEngine, desktopWorld;
 let mobileEngine, mobileWorld;
 
@@ -108,21 +137,39 @@ let projectIndex = [
     name: "A Book on Books",
     url: "project1.html",
     glyph: "    ①  ",
-    tags: ["Book Design", "Archive"]
+    tags: ["Book Design", "Archive"],
+    description: "A deep dive into archival design and typography.",
+    media: [
+      { type: "image", src: "p1_a.jpg" },
+      { type: "image", src: "p1_b.jpg" },
+    ]
   },
   {
-    name: "Graduation Show Branding ",
+    name: "Graduation Show Branding",
     url: "project2.html",
     glyph: "    ②  ",
-    tags: ["Motion Design", "Generative", "Touchdesigner"]
+    tags: ["Motion Design", "Generative", "Touchdesigner"],
+    description: "A dynamic and generative branding project.",
+    media: [
+      { type: "image", src: "p2_a.jpg" },
+      { type: "image", src: "p2_b.jpg" },
+      { type: "image", src: "p2_c.jpg" },
+    ]
   },
   {
     name: "Wix Holidays Moving Posters",
     url: "project3.html",
     glyph: "    ③  ",
-    tags: ["Interactive Experience", "Creative Coding"]
+    tags: ["Interactive Experience", "Creative Coding"],
+    description: "An interactive exploration of festive moving posters.",
+    media: [
+      { type: "image", src: "p3_a.webp" },
+      { type: "image", src: "p3_b.jpg" },
+      { type: "video", src: "p3_c_v.mp4" }
+    ]
   }
 ];
+
 
 let wallComposite;
 let centerArrowBall;
@@ -196,20 +243,20 @@ let arrowEaseDuration = 0.5;
 // --------------------------------------------------------------------------
 
 // Styling for letter balls:
-let letterBallSize = 18;            // radius
-let letterBallTextSize = 14;        // text size
-let letterBallColor = [170];        // fill color
-let letterBallTextColor = [0];      // text color
+let letterBallSize = 18;            
+let letterBallTextSize = 14;        
+let letterBallColor = [170];        
+let letterBallTextColor = [0];      
 
 // Styling for final text circle:
-let textBallSize = 110;             // radius (and used for physics body size)
-let textBallColor = [255];          // fill color
-let textBallTextSize = 14;          // text size
-let textBallTextColor = [0];        // text color
+let textBallSize = 110;             
+let textBallColor = [255];          
+let textBallTextSize = 14;          
+let textBallTextColor = [0];        
 
 // Styling for "Enable Motion" circle:
-let enableMotionBallColor = [255];  // fill color
-let enableMotionTextColor = [0];    // text color
+let enableMotionBallColor = [255];  
+let enableMotionTextColor = [0];    
 let enableMotionText = "Enable Motion";
 
 // Background colors:
@@ -220,25 +267,15 @@ let regularBackgroundColor = [255, 235, 59];
 let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
 // Mobile state machine states:
-// "ENABLE_MOTION": Show the enable motion button.
-// "SHOW_TEXT_BALL": Final state; show final text circle and letter balls.
 let mobileState = "ENABLE_MOTION";
-// (Fade state removed as transition is now immediate)
 let enableMotionAlpha = 255;
-let finalTextAlpha = 255; // always full opacity now
+let finalTextAlpha = 255;
 let bgColorFrom = [...enableMotionBackgroundColor];
 let bgColorTo = [...regularBackgroundColor];
 
 // Mobile letter balls (spawn after transition)
 let mobileBalls = [];
-
-// We'll use an HTML button to request motion permission on iOS.
-let permissionButton;
-
-// For gradual spawning of letter balls
 let mobileLettersToSpawn = [];
-
-// New global to track the rotation of the big center circle
 let mobileBigCircleAngle = 0;
 
 // --------------------------------------------------------------------------
@@ -271,6 +308,59 @@ function draw() {
   }
 }
 
+function enterExpandedMode(index) {
+  leftPanelMode = "expanded";
+  expandedImageIndex = index;
+  noCursor();
+}
+
+function drawExpandedImage() {
+  background(...backgroundColor);
+  let imgX = 50;
+  let imgY = 50;
+  let imgW = width - 100;
+  let imgH = height - 100;
+  let img = projectGalleryImages[expandedImageIndex];
+  image(img, imgX, imgY, imgW, imgH);
+  
+  let drawArrow = false;
+  let arrowSymbol = "";
+  
+  if (mouseX < width / 2) {
+    if (expandedImageIndex > 0) {
+      drawArrow = true;
+      arrowSymbol = "←";
+    }
+  } else {
+    if (expandedImageIndex < projectGalleryImages.length - 1) {
+      drawArrow = true;
+      arrowSymbol = "→";
+    }
+  }
+  
+  if (drawArrow) {
+    noCursor();
+  } else {
+    cursor(ARROW);
+  }
+  
+  if (drawArrow) {
+    fill(255);
+    textSize(64);
+    textAlign(CENTER, CENTER);
+    text(arrowSymbol, mouseX, mouseY);
+  }
+  
+  let xButtonSize = 30;
+  fill(0, 200);
+  noStroke();
+  rect(10, 10, xButtonSize, xButtonSize, 5);
+  fill(255);
+  textSize(20);
+  textAlign(CENTER, CENTER);
+  text("×", 10 + xButtonSize / 2, 10 + xButtonSize / 2);
+}
+
 // ===========================================================================
 // DESKTOP MODE FUNCTIONS
 // ===========================================================================
@@ -299,69 +389,369 @@ function setupDesktop() {
 }
 
 function drawDesktop() {
-  
   noStroke();
-  fill(255, 255, 0);
-  rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
+  
+  push();
+  // Only draw the physics simulation background when in "physics" mode and not during a gallery transition.
+  if (!galleryTransitionActive && leftPanelMode === "physics") {
+    push();
+    fill(255, physicsAlpha);
+    rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
+    pop();
+  }
+  
+  // If in transition from physics to gallery (or if already in gallery)...
+  if (leftPanelMode === "transition" || leftPanelMode === "gallery") {
+    // If a gallery transition (when switching projects) is active, handle that:
+    if (galleryTransitionActive) {
+      let nowSec = millis() / 1000; // use seconds consistently
+      let t = constrain((nowSec - galleryTransitionStartTime) / galleryTransitionDuration, 0, 1);
+      let easeT = easeInOutQuint(t);
+      // Animate our dedicated transition offset from transitionOffsetStart to 0:
+      transitionOffset = lerp(transitionOffsetStart, 0, easeT);
+      let oldAlpha = lerp(255, 0, t);
+      let newAlpha = lerp(0, 255, t);
+      // Pass the transitionOffset to draw the old gallery images.
+      drawGalleryImages(oldGalleryImages, oldAlpha, transitionOffset);
+      // New gallery images remain at offset 0.
+      drawGalleryImages(newGalleryImages, newAlpha, 0);
+      if (t >= 1) {
+        galleryTransitionActive = false;
+        activeProject = upcomingProject;
+        projectGalleryImages = newGalleryImages.slice();
+      }
+      return;
+    }
+                
+    // Otherwise, use the physics-to-gallery fade transition.
+    let nowSec = millis() / 1000;
+    let t = constrain((nowSec - fadeStartTime) / fadeDuration, 0, 1);
+    let eased = easeInOutQuad(t);
+    physicsAlpha = lerp(255, 0, eased);
+    galleryAlpha = lerp(0, 255, eased);
+    
+    if (t >= 1) {
+      leftPanelMode = "gallery";
+    }
+    drawGallery(galleryAlpha);
+  }
+  
+  pop();
+  
+  // Right panel drawing.
   fill(255);
   rect(rightPanelX, rightPanelY, rightPanelW, rightPanelH);
-  Engine.update(desktopEngine);
-  updateGhostBallDesktop();
-  updateGhostBallScaleDesktop();
-  let fadeBallsAlpha = 1;
-  if (isFadingBalls) {
-    let nowSec = millis() / 1000;
-    let t = (nowSec - fadeBallsStartTime) / fadeBallsDuration;
-    if (t >= 1) {
-      for (let lb of desktopBalls) {
-        World.remove(desktopWorld, lb.body);
-      }
-      desktopBalls = [];
-      phraseIndex = 0;
-      for (let i = 0; i < phrase.length; i++) {
-        letterAlphas[i] = 51;
-        letterSpawnTimes[i] = null;
-      }
-      isFadingBalls = false;
-      centerArrowBall.setTargetToMouse();
-    } else {
-      fadeBallsAlpha = 1 - t;
-    }
-  }
-  for (let lb of desktopBalls) {
-    lb.show(fadeBallsAlpha);
-  }
-  centerArrowBall.updateAngle(arrowEaseDuration);
-  centerArrowBall.show();
-  drawPreviewBallDesktop();
-  updateLetterFadeDesktop();
-  drawPhraseDesktop();
-  drawProjectIndex();
-
   
+  if (leftPanelMode === "physics") {
+    Engine.update(desktopEngine);
+    updateGhostBallDesktop();
+    updateGhostBallScaleDesktop();
+    let fadeBallsAlpha = 1;
+    if (isFadingBalls) {
+      let nowSec = millis() / 1000;
+      let t = (nowSec - fadeBallsStartTime) / fadeBallsDuration;
+      if (t >= 1) {
+        for (let lb of desktopBalls) {
+          World.remove(desktopWorld, lb.body);
+        }
+        desktopBalls = [];
+        phraseIndex = 0;
+        for (let i = 0; i < phrase.length; i++) {
+          letterAlphas[i] = 51;
+          letterSpawnTimes[i] = null;
+        }
+        isFadingBalls = false;
+        centerArrowBall.setTargetToMouse();
+      } else {
+        fadeBallsAlpha = 1 - t;
+      }
+    }
+    for (let lb of desktopBalls) {
+      lb.show(fadeBallsAlpha);
+    }
+    centerArrowBall.updateAngle(arrowEaseDuration);
+    centerArrowBall.show();
+    drawPreviewBallDesktop();
+    updateLetterFadeDesktop();
+    drawPhraseDesktop();
+  }
+  
+  if (activeProject !== null) {
+    drawProjectDescriptionOverlay();
+  }
+  
+  drawProjectIndex();
+  push();
+  fill('red');
+  textSize(20);
+  textAlign(CENTER, BOTTOM);
+  text("Transition Offset: " + nf(transitionOffset, 1, 2) + " | FPS: " + nf(frameRate(), 1, 2), width / 2, height - 10);
+  pop();
+  pop();
+
+}
+
+function startGalleryTransition(proj) {
+  projectDescriptionFadeStartTime = millis() / 1000;
+
+  if (activeProject !== null && activeProject !== proj) {
+    galleryTransitionActive = true;
+    galleryTransitionStartTime = millis() / 1000;
+    galleryTransitionDuration = fadeDuration;
+    // Capture the current scroll offset of the old gallery
+    oldScrollOffset = scrollOffset;
+    
+    // Force the transition offset to a known starting value (if needed)
+    // (You can remove transitionOffsetStart if not using it for this purpose.)
+    // transitionOffset = transitionOffsetStart;
+    
+    oldGalleryImages = projectGalleryImages.slice(); // copy current media
+    
+    if (!proj.media || proj.media.length === 0) {
+      proj.media = [];
+      for (let i = 1; i <= 3; i++) {
+        let pg = createGraphics(200, 150);
+        pg.background(200);
+        pg.textSize(32);
+        pg.fill(0);
+        pg.text("Test " + i, 50, 75);
+        proj.media.push({ type: "image", src: "", img: pg });
+      }
+    }
+    newGalleryImages = proj.media.slice();
+    upcomingProject = proj;
+    leftPanelMode = "transition";
+  } else {
+    leftPanelMode = "transition";
+    fadeStartTime = millis() / 1000;
+    scrollOffset = 0;
+    if (!proj.media || proj.media.length === 0) {
+      // Create dummy media if needed...
+    }
+    projectGalleryImages = proj.media.slice();
+    activeProject = proj;
+  }
+}
+
+
+function drawGallery(alphaVal) {
+  galleryImageBoxes = []; // Clear previous boxes
+  
+  // If in a gallery transition between projects:
+  if (galleryTransitionActive) {
+    let nowSec = millis() / 1000; // use seconds consistently
+    let t = constrain((nowSec - galleryTransitionStartTime) / galleryTransitionDuration, 0, 1);
+    let easeT = easeInOutQuint(t);
+    
+    // Animate the scroll offset from the old scroll offset to 0 (new gallery's start)
+    let animatedScroll = lerp(oldScrollOffset, 0, easeT);
+    
+    let oldAlpha = lerp(255, 0, t);
+    let newAlpha = lerp(0, 255, t);
+    
+    // Draw the old gallery images with the animated scroll offset.
+    drawGalleryImages(oldGalleryImages, oldAlpha, animatedScroll);
+    
+    // New gallery images remain at offset 0.
+    drawGalleryImages(newGalleryImages, newAlpha, 0);
+    
+    if (t >= 1) {
+      galleryTransitionActive = false;
+      activeProject = upcomingProject;
+      projectGalleryImages = newGalleryImages.slice();
+    }
+    return;
+  }
+    
+  // Otherwise, normal gallery drawing:
+  let mediaItems = activeProject.media;
+  if (!mediaItems || mediaItems.length === 0) {
+    fill(0, alphaVal);
+    textSize(20);
+    text("No media available", leftPanelX + 20, 20);
+    return;
+  }
+  
+  // Use the global scrollOffset for normal gallery scrolling
+  scrollOffset = lerp(scrollOffset, targetScrollOffset, 0.5);
+
+  let y = rightPanelY + scrollOffset;
+  let spacing = 20;
+  let maxMediaWidth = leftPanelW - 40;
+  
+  for (let i = 0; i < mediaItems.length; i++) {
+    let item = mediaItems[i];
+    let displayWidth = maxMediaWidth;
+    let displayHeight = 0;
+    
+    if (item.type === "image") {
+      if (!item.img) {
+        item.img = loadImage(item.src);
+      }
+      let scaleVal = displayWidth / item.img.width;
+      displayHeight = item.img.height * scaleVal;
+      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
+      tint(255, alphaVal);
+      image(item.img, leftPanelX + 20, y, displayWidth, displayHeight);
+    } else if (item.type === "video") {
+      let vid;
+      if (!item.video) {
+        vid = createVideo(item.src);
+        vid.elt.setAttribute("playsinline", "");
+        vid.volume(0);
+        vid.loop();
+        vid.hide();
+        item.video = vid;
+      } else {
+        vid = item.video;
+      }
+      let vWidth = vid.elt.videoWidth || 640;
+      let vHeight = vid.elt.videoHeight || 360;
+      let scaleVal = displayWidth / vWidth;
+      displayHeight = vHeight * scaleVal;
+      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
+      let videoFrame = vid.get();
+      tint(255, alphaVal);
+      image(videoFrame, leftPanelX + 20, y, displayWidth, displayHeight);
+      if (vid.elt.paused) {
+        vid.play();
+      }
+    }
+    y += displayHeight + spacing;
+  }
+}
+
+// NEW: Helper to draw gallery media from an array with a given tint alpha.
+function drawGalleryImages(imageArray, tintAlpha, offset) {
+  let y = rightPanelY + offset;
+  let spacing = 20;
+  let maxMediaWidth = leftPanelW - 40;
+  
+  for (let i = 0; i < imageArray.length; i++) {
+    let item = imageArray[i];
+    let displayWidth = maxMediaWidth;
+    let displayHeight = 0;
+    
+    if (item.type === "image") {
+      if (!item.img) {
+        item.img = loadImage(item.src);
+      }
+      let scaleVal = displayWidth / item.img.width;
+      displayHeight = item.img.height * scaleVal;
+      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
+      tint(255, tintAlpha);
+      image(item.img, leftPanelX + 20, y, displayWidth, displayHeight);
+    } else if (item.type === "video") {
+      let vid;
+      if (!item.video) {
+        vid = createVideo(item.src);
+        vid.elt.setAttribute("playsinline", "");
+        vid.volume(0);
+        vid.loop();
+        vid.hide();
+        item.video = vid;
+      } else {
+        vid = item.video;
+      }
+      let vWidth = vid.elt.videoWidth || 640;
+      let vHeight = vid.elt.videoHeight || 360;
+      let scaleVal = displayWidth / vWidth;
+      displayHeight = vHeight * scaleVal;
+      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
+      let videoFrame = vid.get();
+      tint(255, tintAlpha);
+      image(videoFrame, leftPanelX + 20, y, displayWidth, displayHeight);
+      if (vid.elt.paused) {
+        vid.play();
+      }
+    }
+    y += displayHeight + spacing;
+  }
+}
+
+function drawProjectDescriptionOverlay() {
+  let lines = phrase.split("\n");
+  let overlayX = phraseX;
+  let overlayY = phraseY;
+  let overlayW = rightPanelW - 2 * phrasePadding;
+  let overlayH = lines.length * (30 * scaleFactor);
+
+  noStroke();
+  fill(255);
+  rect(overlayX, overlayY, overlayW, overlayH);
+
+  let elapsed = (millis() / 1000) - projectDescriptionFadeStartTime;
+  let t = constrain(elapsed / projectDescriptionFadeDuration, 0, 1);
+  let fadeAlpha = easeInOutSine(t);
+
+  textSize(TEXTSCALE * scaleFactor);
+  textAlign(LEFT, TOP);
+  fill(...phraseTextColor, fadeAlpha * 255);
+  let desc = activeProject.description ? activeProject.description : ("Description for " + activeProject.name);
+  text(desc, overlayX, overlayY, overlayW, overlayH);
+}
+
+function mouseWheel(event) {
+  if (galleryTransitionActive) return;
+  if (leftPanelMode === "gallery") {
+    // Update the target scroll offset based on the mouse wheel delta.
+    targetScrollOffset -= event.delta;
+  }
 }
 
 function mousePressed() {
-  if (!MOBILE_MODE) {
-    // Check if a project in the index was clicked.
-    let indexTextSize = TEXTSCALE * scaleFactor;
-    for (let proj of projectIndex) {
-      // Calculate the bounding box of the text.
-      let projWidth = textWidth(proj.name);
-      let projHeight = indexTextSize;  // approximate height
-
-      // Check if the mouse is within this box.
+  if (leftPanelMode === "gallery") {
+    for (let box of galleryImageBoxes) {
       if (
-        mouseX > proj.x && mouseX < proj.x + projWidth &&
-        mouseY > proj.y - projHeight && mouseY < proj.y
+        mouseX >= box.x &&
+        mouseX <= box.x + box.w &&
+        mouseY >= box.y &&
+        mouseY <= box.y + box.h
       ) {
-        // Navigate to the project URL.
-        window.location.href = proj.url;
-        return; // Exit so other mousePressed actions don't fire.
+        enterExpandedMode(box.index);
+        return;
       }
     }
   }
-
+  
+  if (leftPanelMode === "expanded") {
+    if (mouseX >= 10 && mouseX <= 40 && mouseY >= 10 && mouseY <= 40) {
+      leftPanelMode = "gallery";
+      cursor(ARROW);
+      return;
+    }
+    if (mouseX < width / 2 && expandedImageIndex > 0) {
+      expandedImageIndex--;
+      return;
+    }
+    if (mouseX >= width / 2 && expandedImageIndex < projectGalleryImages.length - 1) {
+      expandedImageIndex++;
+      return;
+    }
+    return;
+  }
+  
+  if (!MOBILE_MODE) {
+    let a = textAscent();
+    let d = textDescent();
+    let textHeight = a + d;
+    let hitMargin = 9 * scaleFactor;
+    for (let proj of projectIndex) {
+      if (
+        mouseX >= proj.x &&
+        mouseX <= proj.x + proj.lineWidth &&
+        mouseY >= proj.y - hitMargin &&
+        mouseY <= proj.y - hitMargin + textHeight + 2 * hitMargin
+      ) {
+        console.log("Project clicked:", proj.name);
+        activeProject = proj;
+        projectDescriptionFadeStartTime = millis() / 1000;
+        startGalleryTransition(proj);
+        return;
+      }
+    }
+  }
+  
   if (MOBILE_MODE) {
     mousePressedMobile();
     return;
@@ -386,31 +776,24 @@ function startFadingBallsDesktop() {
 }
 
 function createLetterBallDesktop(x, y, letter) {
-  // Randomize the radius between 20 and 40 (scaled)
   let r = random(18, 30) * scaleFactor;
-  
   let options = {
     friction: physicsConfigDesktop.friction,
     frictionAir: physicsConfigDesktop.airDrag,
     density: physicsConfigDesktop.density,
     restitution: physicsConfigDesktop.restitution
   };
-  
-  // Create the Matter.js body with the randomized radius.
   let body = Bodies.circle(x, y, r, options);
-  
-  // Use the given letter from the phrase.
   let lb = new LetterBall(body, letter, phraseIndex, r);
   desktopBalls.push(lb);
   World.add(desktopWorld, body);
-  
-  // Apply an initial velocity.
   ballInitialVelocityAngle = random(ballInitialVelocityAngleMIN, ballInitialVelocityAngleMAX);
   let velX = ballInitialVelocitySpeed * scaleFactor * cos(radians(ballInitialVelocityAngle));
   let velY = ballInitialVelocitySpeed * scaleFactor * sin(radians(ballInitialVelocityAngle));
   Matter.Body.setVelocity(body, { x: velX, y: velY });
   centerArrowBall.setTargetBall(lb);
 }
+
 function updateGhostBallDesktop() {
   let newPos = {
     x: mouseX - ghostBallOffset.x,
@@ -515,91 +898,91 @@ function drawProjectIndex() {
   let indexTextSize = TEXTSCALE * scaleFactor;
   textSize(indexTextSize);
   textAlign(LEFT, TOP);
-  let arrowInitialOffset = 25 * scaleFactor; // arrow offset scales with scaleFactor
-
-  // Measure font metrics
+  let arrowInitialOffset = 25 * scaleFactor;
   let a = textAscent();
   let d = textDescent();
-  let textHeight = a + d; // total vertical space for one line
-
+  let textHeight = a + d;
   let padding = 10 * scaleFactor;
-  // Place the index in the bottom-left of the right panel.
   let baseX = rightPanelX + padding;
-  // Adjust vertical spacing to include scaleFactor in the constant spacing.
   let lineSpacing = textHeight + (20 * scaleFactor);
-  
-  // Hitbox margin now scales with scaleFactor.
   let hitMargin = 9 * scaleFactor;
-
-  // Compute total height for the index.
   let totalHeight = projectIndex.length * lineSpacing;
   let startY = rightPanelY + rightPanelH - padding - totalHeight;
-
-  // Pass 1: Determine hover states & bounding boxes
   let anyHovered = false;
+  
   for (let i = 0; i < projectIndex.length; i++) {
     let proj = projectIndex[i];
-
-    // Initialize animation properties if not already set.
     if (proj.offset === undefined) proj.offset = 0;
     if (proj.alpha === undefined) proj.alpha = 255;
-
-    // Y-position for this project line.
     proj.y = startY + i * lineSpacing;
-
-    // Measure widths of each chunk:
+    proj.x = baseX + proj.offset;
+    
     let glyphW = textWidth(proj.glyph);
     let nameW = textWidth(proj.name);
     let tagsStr = " / " + proj.tags.join(" / ");
     let tagsW = textWidth(tagsStr);
-
-    // Store total line width for bounding box.
-    proj.lineWidth = glyphW + 8 + nameW + 8 + tagsW; 
-    // (the "8" values are extra spaces between glyph, name, and tags)
-
-    // Calculate starting x for this line (plus animation offset).
-    let currentX = baseX + proj.offset;
-
-    // BOUNDING BOX for the entire line, with extra margin.
-    let boxX = currentX;
+    proj.lineWidth = glyphW + 8 + nameW + 8 + tagsW;
+    
+    let boxX = proj.x;
     let boxY = proj.y - hitMargin;
     let boxW = proj.lineWidth;
     let boxH = textHeight + hitMargin * 2;
-
-    // Check if the mouse is within that box.
-    if (
-      mouseX >= boxX &&
-      mouseX <= boxX + boxW &&
-      mouseY >= boxY &&
-      mouseY <= boxY + boxH
-    ) {
+    
+    if (proj === activeProject) {
       proj.hovered = true;
-      anyHovered = true;
     } else {
-      proj.hovered = false;
+      proj.hovered = (mouseX >= boxX &&
+                      mouseX <= boxX + boxW &&
+                      mouseY >= boxY &&
+                      mouseY <= boxY + boxH);
+    }
+    if (proj.hovered) {
+      anyHovered = true;
     }
   }
-
-  // Pass 2: Update animation for each project.
+  
+  let actualIndexHover = false;
+  for (let proj of projectIndex) {
+    let hm = 9 * scaleFactor;
+    let bx = proj.x;
+    let by = proj.y - hm;
+    let bw = proj.lineWidth;
+    let localTextHeight = textAscent() + textDescent();
+    let bh = localTextHeight + hm * 2;
+    if (
+      mouseX >= bx &&
+      mouseX <= bx + bw &&
+      mouseY >= by &&
+      mouseY <= by + bh
+    ) {
+      actualIndexHover = true;
+      break;
+    }
+  }
+  
+  if (mouseX >= rightPanelX && mouseX <= rightPanelX + rightPanelW) {
+    if (actualIndexHover) {
+      cursor(HAND);
+    } else {
+      cursor(ARROW);
+    }
+  }
+  
   for (let proj of projectIndex) {
     if (proj.textOffset === undefined) proj.textOffset = 0;
     if (proj.arrowOffset === undefined) proj.arrowOffset = 0;
-
     let targetTextOffset = 0;
     let targetArrowOffset = 0;
-    
-    // Define target opacity values.
     let targetGlyphAlpha = 255;
     let targetNameAlpha = 255;
-    let targetTagsAlpha = 51; // Tags are faint by default
-
+    let targetTagsAlpha = 51;
     if (anyHovered) {
       if (proj.hovered) {
         targetGlyphAlpha = 255;
         targetNameAlpha = 255;
         targetTagsAlpha = 255;
-        targetTextOffset = 50;   // Slide text elements when hovered.
-        targetArrowOffset = 25;  // Arrow offset increases.
+        targetTextOffset = 50;
+        targetArrowOffset = 25;
       } else {
         targetGlyphAlpha = 51;
         targetNameAlpha = 51;
@@ -608,55 +991,35 @@ function drawProjectIndex() {
         targetArrowOffset = 0;
       }
     }
-    
-    // Smoothly update offsets and opacities.
     proj.textOffset = lerp(proj.textOffset, targetTextOffset, 0.2);
     proj.arrowOffset = lerp(proj.arrowOffset, targetArrowOffset, 0.2);
     proj.glyphAlpha = lerp(proj.glyphAlpha || 255, targetGlyphAlpha, 0.2);
     proj.nameAlpha = lerp(proj.nameAlpha || 255, targetNameAlpha, 0.2);
     proj.tagsAlpha = lerp(proj.tagsAlpha || 51, targetTagsAlpha, 0.2);
   }
-
-  // Pass 3: Draw the index.
+  
   for (let proj of projectIndex) {
     let lineX = baseX + proj.textOffset;
     let lineY = proj.y;
-
-    // Draw the arrow for hovered projects.
     if (proj.hovered) {
       let arrow = "→  ";
       let arrowW = textWidth(arrow);
       let arrowX = (baseX + arrowInitialOffset) + proj.arrowOffset - arrowW;
-      fill(0, 255); // fully opaque arrow
+      fill(0, 255);
       text(arrow, arrowX, proj.y);
     }
-    // Draw glyph.
     fill(0, proj.glyphAlpha);
     text(proj.glyph, lineX, lineY);
-
-    // Offset project name.
     let glyphW = textWidth(proj.glyph);
     let xAfterGlyph = lineX + glyphW + 8;
-
-    // Draw project name.
     fill(0, proj.nameAlpha);
     text(proj.name, xAfterGlyph, lineY);
-
-    // Offset for tags.
     let nameW = textWidth(proj.name);
     let xAfterName = xAfterGlyph + nameW + 8;
-
-    // Draw tags.
     let tagsStr = " / " + proj.tags.join(" / ");
     fill(0, proj.tagsAlpha);
     text(tagsStr, xAfterName, lineY);
   }
-  if (anyHovered) {
-    cursor(HAND);
-  } else {
-    cursor(ARROW);
-  }
-  
 }
 
 function updateLetterFadeDesktop() {
@@ -675,7 +1038,7 @@ class LetterBall {
   constructor(body, letter, phraseIdx, r) {
     this.body = body;
     this.letter = letter;
-    this.r = r; // use the randomized radius
+    this.r = r;
     this.phraseIdx = phraseIdx;
   }
   show(fadeAlpha = 1) {
@@ -767,17 +1130,15 @@ class CenterArrowBall {
 }
 
 // ===========================================================================
-// MOBILE MODE FUNCTIONS (with DeviceMotion, Permission, and your changes)
+// MOBILE MODE FUNCTIONS
 // ===========================================================================
 function setupMobile() {
-  // Create the canvas for mobile.
   createCanvas(windowWidth, windowHeight);
   mobileEngine = Engine.create();
   mobileWorld = mobileEngine.world;
   mobileEngine.world.gravity.x = 0;
   mobileEngine.world.gravity.y = 0;
   
-  // Create walls: top, bottom, left, right.
   let group = Composite.create();
   let thick = 200;
   let topWall = Bodies.rectangle(width / 2, -thick / 2, width + thick * 2, thick, { isStatic: true });
@@ -787,11 +1148,9 @@ function setupMobile() {
   Composite.add(group, [topWall, bottomWall, leftWall, rightWall]);
   World.add(mobileWorld, group);
   
-  // Create a static center circle for collision (using textBallSize as the radius).
   mobileCircleBody = Bodies.circle(width / 2, height / 2, textBallSize, { isStatic: true });
   World.add(mobileWorld, mobileCircleBody);
   
-  // Set initial mobile state.
   mobileState = "ENABLE_MOTION";
   enableMotionAlpha = 255;
   finalTextAlpha = 255;
@@ -799,24 +1158,20 @@ function setupMobile() {
   bgColorTo = [...regularBackgroundColor];
   console.log("Mobile setup complete. State:", mobileState);
   
-  // Request permission for device orientation and motion (for iOS 13+)
-permissionButton = createButton(enableMotionText);
-permissionButton.style('width', (textBallSize * 2) + 'px');
-permissionButton.style('height', (textBallSize * 2) + 'px');
-permissionButton.style('background-color', color(enableMotionBallColor));
-permissionButton.style('color', color(enableMotionTextColor));
-permissionButton.style('border', 'none');
-permissionButton.style('border-radius', '50%');
-permissionButton.style('font-size', textBallTextSize + 'px');
-// Set the font-family (try using quotes and fallback)
-permissionButton.style("font-family", '"Geist UltraLight", sans-serif');
-// Alternatively, force it on the element:
-// permissionButton.elt.style.fontFamily = '"Geist UltraLight", sans-serif';
-permissionButton.position(width / 2 - textBallSize, height / 2 - textBallSize);
-permissionButton.mousePressed((event) => {
-  event.stopPropagation();
-  requestMotionPermission();
-});
+  permissionButton = createButton(enableMotionText);
+  permissionButton.style('width', (textBallSize * 2) + 'px');
+  permissionButton.style('height', (textBallSize * 2) + 'px');
+  permissionButton.style('background-color', color(enableMotionBallColor));
+  permissionButton.style('color', color(enableMotionTextColor));
+  permissionButton.style('border', 'none');
+  permissionButton.style('border-radius', '50%');
+  permissionButton.style('font-size', textBallTextSize + 'px');
+  permissionButton.style("font-family", '"Geist UltraLight", sans-serif');
+  permissionButton.position(width / 2 - textBallSize, height / 2 - textBallSize);
+  permissionButton.mousePressed((event) => {
+    event.stopPropagation();
+    requestMotionPermission();
+  });
 }
 
 function drawMobile() {
@@ -824,7 +1179,6 @@ function drawMobile() {
   
   if (mobileState === "ENABLE_MOTION") {
     background(...enableMotionBackgroundColor);
-    // The permission button remains visible.
   } else if (mobileState === "SHOW_TEXT_BALL") {
     background(...regularBackgroundColor);
     drawFinalTextCircle(255);
@@ -835,10 +1189,7 @@ function drawMobile() {
 }
 
 function mousePressedMobile() {
-  if (mobileState === "ENABLE_MOTION") {
-    // The HTML button handles permission.
-    return;
-  }
+  if (mobileState === "ENABLE_MOTION") return;
   if (mobileState === "SHOW_TEXT_BALL") {
     let d = dist(mouseX, mouseY, width / 2, height / 2);
     if (d <= textBallSize) {
@@ -878,7 +1229,7 @@ function requestMotionPermission() {
           if (permissionButton) {
             permissionButton.hide();
           }
-          startTransition();  // Instant transition without fade.
+          startTransition();
         } else {
           console.log("Device orientation permission denied.");
         }
@@ -891,7 +1242,6 @@ function requestMotionPermission() {
   }
 }
 
-// Instant transition without fade.
 function startTransition() {
   mobileState = "SHOW_TEXT_BALL";
   spawnAllMobileBalls();
@@ -926,33 +1276,25 @@ function drawFinalTextCircle(alphaVal) {
   pop();
 }
 
-// Handle device orientation: update gravity (stronger) and update the big circle's rotation.
 function handleDeviceOrientation(event) {
   if (!event.beta || !event.gamma || !event.alpha) return;
-  
-  // Calculate target angle (in radians)
   let targetAngle = radians(event.alpha);
-  
-  // Ease the rotation with our custom angle lerp to avoid loops.
   mobileBigCircleAngle = lerpAngle(mobileBigCircleAngle, targetAngle, 0.1);
-  
-  // Map gravity more strongly.
   mobileEngine.world.gravity.x = map(event.gamma, -90, 90, -1, 1);
   mobileEngine.world.gravity.y = map(event.beta, -90, 90, -1, 1);
 }
 
-// Handle device motion: apply extra forces on mobile balls when a shake/whip is detected.
 function handleDeviceMotion(event) {
-  let acc = event.acceleration; // acceleration excluding gravity
+  let acc = event.acceleration;
   if (!acc) return;
   let magnitude = sqrt(
     (acc.x || 0) * (acc.x || 0) +
     (acc.y || 0) * (acc.y || 0) +
     (acc.z || 0) * (acc.z || 0)
   );
-  const threshold = 5; // adjust threshold as needed
+  const threshold = 5;
   if (magnitude > threshold) {
-    let forceScale = 0.0005; // adjust force magnitude
+    let forceScale = 0.0005;
     for (let mb of mobileBalls) {
       Matter.Body.applyForce(
         mb.body,
@@ -1015,7 +1357,6 @@ class MobileLetterBall {
     fill(...letterBallTextColor);
     textAlign(CENTER, CENTER);
     textSize(letterBallTextSize);
-    // Move text upward a few pixels.
     text(this.letter, 0, -this.r * 0.1);
     pop();
   }
