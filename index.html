@@ -1,34 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Noam Sadi Portfolio</title>
-      <link rel="icon" type="image/x-icon" href="/icon.ico">
-
-    <style>
-        /* Remove all margins and padding */
-        * {
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevent scrolling */
-        }
-
-        html, body {
-            width: 100%;
-            height: 100%;
-        }
-
-        canvas {
-            display: block; /* Removes any extra spacing around the canvas */
-        }
-    </style>
-    <!-- p5.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.2/lib/p5.min.js"></script>
-    <!-- Matter.js library -->
-    <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Circle with Letter Balls - p5.js + Matter.js</title>
+  <style>
+    @font-face {
+      font-family: 'Geist UltraLight';
+      src: url('Assets/Geist UltraLight.otf') format('opentype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    
+    /* Remove all margins and padding */
+    * {
+      margin: 0;
+      padding: 0;
+      overflow: hidden; /* Prevent scrolling */
+      -webkit-user-select: none;  /* Safari */
+      -ms-user-select: none;      /* IE 10+ and Edge */
+      user-select: none;          /* Standard syntax */
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+    }
+    canvas {
+      display: block; /* Removes any extra spacing around the canvas */
+    }
+  </style>
+  <!-- p5.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.4.2/lib/p5.min.js"></script>
+  <!-- Matter.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+  <!-- Anime.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 </head>
 <body>
-    <script src="sketch.js"></script>
+  <script src="sketch.js"></script>
 </body>
 </html>
