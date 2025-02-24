@@ -3,8 +3,43 @@
 // --------------------------------------------------------------------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  updateLayout();
+  updateLayout();  // This updates all your panel positions and dimensions
 
+  // Update HTML gallery dimensions and position
+  if (htmlGallery) {
+    // Update gallery container
+    htmlGallery.style('left', leftPanelX + 'px');
+    htmlGallery.style('width', leftPanelW + 'px');
+    htmlGallery.style('height', '100vh');
+    
+    // Update content container position to match panel Y position
+    const contentContainer = document.getElementById('galleryContent');
+    if (contentContainer) {
+      contentContainer.style.marginTop = leftPanelY + 'px';
+    }
+    
+    // Ensure gallery items stay within bounds
+    const galleryItems = htmlGallery.elt.getElementsByClassName('gallery-item');
+    for (let item of galleryItems) {
+      item.style.maxWidth = '100%';
+      item.style.height = 'auto';
+    }
+
+    // Re-calculate scroll position to maintain relative position
+    const scrollPercentage = htmlGallery.elt.scrollTop / htmlGallery.elt.scrollHeight;
+    const newScrollPosition = scrollPercentage * htmlGallery.elt.scrollHeight;
+    htmlGallery.elt.scrollTop = newScrollPosition;
+  }
+
+  // Update HTML description position and dimensions
+  if (htmlDescription) {
+    htmlDescription.position(phraseX, phraseY);
+    htmlDescription.style('width', (rightPanelW - 2 * phrasePadding) + 'px');
+    htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
+  }
+  updateBackButtonPosition();
+
+  // Update physics simulation if in physics mode
   if (!MOBILE_MODE) {
     // Remove and recreate the static walls
     Composite.remove(desktopWorld, wallComposite);
@@ -16,10 +51,11 @@ function windowResized() {
     centerArrowBall = new CenterArrowBall(leftPanelCenterX, leftPanelCenterY, 40 * scaleFactor);
     World.add(desktopWorld, centerArrowBall.body);
     
-    // Update preview ball position (if needed)
-    Matter.Body.setPosition(previewBody, { x: mouseX - ghostBallOffset.x, y: mouseY - ghostBallOffset.y });
-    
-    // Update any other physics objects that depend on layout or scaleFactor here...
+    // Update preview ball position
+    Matter.Body.setPosition(previewBody, { 
+      x: mouseX - ghostBallOffset.x, 
+      y: mouseY - ghostBallOffset.y 
+    });
   }
 }
 
@@ -29,7 +65,7 @@ function isMobileDevice() {
 }
 
 // 2) Easing functions
-function easeInOutQuad(t) {
+function easeInOutQuint(t) {
   if (t < 0.5) return 2 * t * t;
   return -1 + (4 - 2 * t) * t;
 }
@@ -81,6 +117,12 @@ const Engine = Matter.Engine;
 const World = Matter.World;
 const Bodies = Matter.Bodies;
 const Composite = Matter.Composite;
+let targetScrollY = 0;
+let currentScrollY = 0;
+let scrollVelocity = 0;
+const SCROLL_EASE = 0.1;
+const SCROLL_FRICTION = 0.95;
+const SCROLL_SENSITIVITY = 0.01;
 
 // --------------------------------------------------------------------------
 // GLOBAL VARIABLES FOR MODES
@@ -93,14 +135,12 @@ let transitionOffset = 0;        // This will be computed during the transition
 // TEXT SCALE!!!!!!!!!!!!!!
 // --------------------------------------------------------------------------
 let TEXTSCALE = 17;
-let expandedImageIndex = 0;   // The index of the expanded image in projectGalleryImages
-let galleryImageBoxes = [];   // To store bounding boxes for gallery images (used for click detection)
 let targetScrollOffset = 0; // The scroll offset we want to reach
 
 // --------------------------------------------------------------------------
 // Additional globals for left panel transition and gallery view:
 // --------------------------------------------------------------------------
-let leftPanelMode = "physics";  // "physics" | "transition" | "gallery" | "expanded"
+let leftPanelMode = "physics";  // "physics" | "transition" | "gallery" | "htmlGallery"
 let physicsAlpha = 255;         // Opacity for physics simulation (0-255)
 let galleryAlpha = 0;           // Opacity for gallery (0-255)
 let fadeStartTime = null;       // Time when fade transition started
@@ -122,11 +162,19 @@ let newGalleryImages = [];  // holds incoming project media
 let oldScrollOffset = 0;    // scroll offset at moment of transition
 let upcomingProject = null; // new project to switch to
 
+// NEW global: Alpha value for covering the physics simulation when a project is open.
+let physicsCoverAlpha = 0;
+
 // --------------------------------------------------------------------------
 // Matter.js engines/worlds
 // --------------------------------------------------------------------------
 let desktopEngine, desktopWorld;
 let mobileEngine, mobileWorld;
+let expandedOverlay;        // The full-screen overlay
+let expandedImage;          // The <img> or <video> element shown in overlay
+let expandedCloseButton;    // The "X" close button
+let expandedItems = [];     // Array of all items in the gallery (images & videos)
+let currentExpandedIndex = -1; // Which photo/video is open (-1 means none)
 
 // --------------------------------------------------------------------------
 // DESKTOP MODE GLOBALS
@@ -144,18 +192,57 @@ let projectIndex = [
       { type: "image", src: "p1_b.jpg" },
     ]
   },
+
+
   {
     name: "Graduation Show Branding",
     url: "project2.html",
     glyph: "    ②  ",
     tags: ["Motion Design", "Generative", "Touchdesigner"],
-    description: "A dynamic and generative branding project.",
+    description: "Final Work at Shenkar: A Book on Books<br>This project marks the culmination of my academic journey at Shenkar, where I delved deep into the evolution of book design and the printed word.<br>It involved extensive archival research, unearthing historical treasures and reinterpreting classic design principles to forge a new visual narrative.<br>The work merges modern typography with traditional printing techniques, creating a unique dialogue between past and present.<br>Each page is crafted to challenge conventional layouts, inviting the reader to explore the intricate relationship between form and content.<br>Ultimately, this project is a celebration of literary culture, blending art, history, and technology to redefine the boundaries of book-making.",
     media: [
-      { type: "image", src: "p2_a.jpg" },
-      { type: "image", src: "p2_b.jpg" },
-      { type: "image", src: "p2_c.jpg" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1-zc0gAF9t4-2LWbJhFf7jGzvfWXMgpCW" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=13cfWyDjkB7OqPyj8AGUCtJiBJBgst2ym" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=14lbuC9hjN3H2DfNau4RLX08gZqq3kWnr" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=14BA6e6PRJ61nkOOhzhfgWPPfxSxnLD3F" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1yvMkNDkywof85PrOmO9lEIgu04Q_Nxh7" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1rnQ-lW8CLTZj0WQ25ZKc4ZO8tEcZ4k7i" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=11troiVWKCn81_5Y4cJhuGnPNxCdi0XTZ" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=11kmg6UAJCw5-4ykhKMWzaus4r-B7_Gsx" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=15IheLAQizqkWcoUMUgNaLxa4cRTRnFc7" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1CRpV98zcJYePHxL59WNCcGGR9FM65fMf" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1iJNomukff_VjEnVwbjCK9qLj6gm8HT_B" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=13oer0vWhWANQV16lZQ2XG0jNpL1sYHvR" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1Wa_cfwmkpdwv5kx4v8-xrZOz8Z7O8mWt" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1UzdxzoJC5t_PLrVRPD_fqZxdFRhJ5gRv" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1BG0WU9Te_oO5m3EBIbbf-SSuFCqxx3Cm" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1XdQTiD3ALt6fmxGGcT9uKoV46DXmoLe0" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=10LNOBmeAiQ1xGdKsswkSODNntcY20hdb" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1yRIcouKjZJq9myPusnwwdC7LUE6w1_eo" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1eRaMJnj0vbAdbSqIooke7iDXfC_xezEV" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1b-4xV6zN72jAIwqq3AAnTISpZ9I9ojWR" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1K98YenNJy_yf2YBiGQPtIOkmLtZ5fMA8" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1BttYxxUac1Rso16Ha3zHmqKnWdDI_FYm" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1XchobnxC7cn9OiUTM60FCmZTJbdvwYT6" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1lihhd1hrIAc1Zs9yXf1EJuCNIVnZSVhM" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1rl4WFdS9nYQ5v0bHDJaM-UQ1QXRRd6ub" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1OxZPQsfUmsqd1xEsj96yW3dvxqQ3Qo6o" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1xSD_vqVNz5YujAaCGcGq3SkqH2jjINz_" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1Ufkk1vP45NJXsV4aDKldzXmZsPbk7jgE" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1HrA1-ObSCiZ2oZ1azsI9E5xGwvzOI1Ez" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1omR0QHyu7xKJNCxPk2cR2IYYmfhrYtKH" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1OwpHRbQMM8ZjidmM0g4_gtgJN7VTcBoK" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1dvHtUI3NAdXgs_OH6q2vAGFchPgcchSJ" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1xkTEsSacIPAuLkpT5freghrNolMifJf9" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1RWwZe1WXGN2Ykfia7gmtO5xIW-ENkVvm" },
+{ type: "image", src: "https://drive.google.com/uc?export=view&id=1WHnKe0kWASfnmVq0KSCk_ruf2wLKOrqm" }
     ]
   },
+
+
+
+
+
   {
     name: "Wix Holidays Moving Posters",
     url: "project3.html",
@@ -169,7 +256,6 @@ let projectIndex = [
     ]
   }
 ];
-
 
 let wallComposite;
 let centerArrowBall;
@@ -218,13 +304,13 @@ let fadeBallsStartTime = 1.5;
 let fadeBallsDuration = 0.1;
 
 // Desktop colors and physics configuration
-let backgroundColor = [230];
+let backgroundColor = [35];
 let phraseTextColor = [0];
 let highlightBallFill = [70, 200, 70];
 let highlightTextFill = [255];
-let defaultBallFill = [170];
-let defaultTextFill = [0];
-let arrowCircleColor = [80];
+let defaultBallFill = [255];
+let defaultTextFill = [35];
+let arrowCircleColor = [35];
 let arrowGlyphColor = [255];
 let ghostBallFill = [127, 50];
 let ghostTextFill = [0, 50];
@@ -241,48 +327,60 @@ let arrowEaseDuration = 0.5;
 // --------------------------------------------------------------------------
 // MOBILE MODE GLOBALS & STYLING VARIABLES
 // --------------------------------------------------------------------------
-
-// Styling for letter balls:
 let letterBallSize = 18;            
 let letterBallTextSize = 14;        
 let letterBallColor = [170];        
 let letterBallTextColor = [0];      
 
-// Styling for final text circle:
 let textBallSize = 110;             
 let textBallColor = [255];          
 let textBallTextSize = 14;          
 let textBallTextColor = [0];        
 
-// Styling for "Enable Motion" circle:
 let enableMotionBallColor = [255];  
 let enableMotionTextColor = [0];    
 let enableMotionText = "Enable Motion";
 
-// Background colors:
 let enableMotionBackgroundColor = [80];
-let regularBackgroundColor = [255, 235, 59];
+let regularBackgroundColor = [80];
 
-// Final text for final text circle:
 let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
-// Mobile state machine states:
 let mobileState = "ENABLE_MOTION";
 let enableMotionAlpha = 255;
 let finalTextAlpha = 255;
 let bgColorFrom = [...enableMotionBackgroundColor];
 let bgColorTo = [...regularBackgroundColor];
 
-// Mobile letter balls (spawn after transition)
 let mobileBalls = [];
 let mobileLettersToSpawn = [];
 let mobileBigCircleAngle = 0;
+
+
+
+let backButton;
+
+
+
+
+
 
 // --------------------------------------------------------------------------
 // p5.js SETUP & DRAW
 // --------------------------------------------------------------------------
 function preload() {
   myFont = loadFont("Geist UltraLight.otf");
+  for (let i = 0; i < projectIndex.length; i++) {
+    let proj = projectIndex[i];
+    if (proj.media && proj.media.length > 0) {
+      for (let j = 0; j < proj.media.length; j++) {
+        let mediaItem = proj.media[j];
+        if (mediaItem.type === "image") {
+          mediaItem.img = loadImage(mediaItem.src);
+        }
+      }
+    }
+  }
 }
 
 function setup() {
@@ -295,7 +393,74 @@ function setup() {
     setupMobile();
   } else {
     createCanvas(windowWidth, windowHeight);
+    const style = document.createElement('style');
+    style.innerHTML = `
+    .gallery-item {
+      cursor: pointer;
+    }
+    
+    #expandedImage {
+      pointer-events: none;
+    }
+  `;
+      document.head.appendChild(style);
+
     setupDesktop();
+
+htmlGallery = createDiv('');
+htmlGallery.id('htmlGallery');
+
+htmlGallery.style('scrollbar-width', 'none'); // Firefox
+htmlGallery.style('-ms-overflow-style', 'none'); // IE/Edge
+htmlGallery.style('&::-webkit-scrollbar', 'display: none'); // Chrome/Safari
+
+htmlGallery.style('position', 'fixed');
+htmlGallery.style('top', '0');
+htmlGallery.style('left', leftPanelX + 'px');
+htmlGallery.style('width', leftPanelW + 'px');
+htmlGallery.style('height', '100vh');
+htmlGallery.style('overflow-y', 'auto');
+htmlGallery.style('overflow-x', 'hidden');
+
+
+// Create top scroll area (300vh)
+let topScrollArea = createDiv('');
+topScrollArea.parent(htmlGallery);
+topScrollArea.style('height', '300vh');
+
+// Create content container with absolute positioning
+let contentContainer = createDiv('');
+contentContainer.parent(htmlGallery);
+contentContainer.id('galleryContent');
+contentContainer.style('display', 'flex');
+contentContainer.style('flex-direction', 'column');
+contentContainer.style('align-items', 'center');
+// Position it at the same Y as the panels
+contentContainer.style('margin-top', leftPanelY + 'px');
+
+// Create bottom scroll area (300vh)
+let bottomScrollArea = createDiv('');
+bottomScrollArea.parent(htmlGallery);
+bottomScrollArea.style('height', '300vh');
+
+        
+        
+    htmlDescription = createDiv('');
+    htmlDescription.id('htmlDescription');
+    htmlDescription.style('font-family', 'Geist UltraLight, sans-serif');
+    htmlDescription.style('position', 'absolute');
+    htmlDescription.style('overflow', 'hidden');
+    htmlDescription.style('background', 'rgba(255,255,255,0.8)');
+    htmlDescription.position(phraseX, phraseY);
+    htmlDescription.style('width', (rightPanelW - 2 * phrasePadding) + 'px');
+    htmlDescription.style('opacity', '0');
+    htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
+    setupScrollHandling();
+
+
+    // Start with physics simulation visible.
+    leftPanelMode = "physics";
+    activeProject = null;
   }
 }
 
@@ -307,63 +472,431 @@ function draw() {
     drawDesktop();
   }
 }
-
-function enterExpandedMode(index) {
-  leftPanelMode = "expanded";
-  expandedImageIndex = index;
-  noCursor();
+function updateScroll() {
+  if (leftPanelMode === "htmlGallery") {
+    // Apply friction to velocity
+    scrollVelocity *= SCROLL_FRICTION;
+    
+    // Update target position based on velocity
+    targetScrollY += scrollVelocity;
+    
+    // Clamp target
+    const maxScroll = htmlGallery.elt.scrollHeight - htmlGallery.elt.clientHeight;
+    targetScrollY = constrain(targetScrollY, 0, maxScroll);
+    
+    // Ease current position towards target
+    currentScrollY = lerp(currentScrollY, targetScrollY, SCROLL_EASE);
+    
+    // Apply scroll
+    htmlGallery.elt.scrollTop = currentScrollY;
+  }
 }
 
-function drawExpandedImage() {
-  background(...backgroundColor);
-  let imgX = 50;
-  let imgY = 50;
-  let imgW = width - 100;
-  let imgH = height - 100;
-  let img = projectGalleryImages[expandedImageIndex];
-  image(img, imgX, imgY, imgW, imgH);
-  
-  let drawArrow = false;
-  let arrowSymbol = "";
-  
-  if (mouseX < width / 2) {
-    if (expandedImageIndex > 0) {
-      drawArrow = true;
-      arrowSymbol = "←";
-    }
-  } else {
-    if (expandedImageIndex < projectGalleryImages.length - 1) {
-      drawArrow = true;
-      arrowSymbol = "→";
-    }
-  }
-  
-  if (drawArrow) {
-    noCursor();
-  } else {
-    cursor(ARROW);
-  }
-  
-  if (drawArrow) {
-    fill(255);
-    textSize(64);
-    textAlign(CENTER, CENTER);
-    text(arrowSymbol, mouseX, mouseY);
-  }
-  
-  let xButtonSize = 30;
-  fill(0, 200);
-  noStroke();
-  rect(10, 10, xButtonSize, xButtonSize, 5);
-  fill(255);
-  textSize(20);
-  textAlign(CENTER, CENTER);
-  text("×", 10 + xButtonSize / 2, 10 + xButtonSize / 2);
-}
+
 
 // ===========================================================================
 // DESKTOP MODE FUNCTIONS
 // ===========================================================================
+function setupScrollHandling() {
+  // Global wheel event listener
+  window.addEventListener('wheel', (e) => {
+    if (leftPanelMode === "htmlGallery") {
+      e.preventDefault();
+      
+      // Add to target scroll with easing
+      scrollVelocity += e.deltaY * SCROLL_SENSITIVITY;
+      
+      // Clamp target scroll to bounds
+      const maxScroll = htmlGallery.elt.scrollHeight - htmlGallery.elt.clientHeight;
+      targetScrollY = constrain(targetScrollY, 0, maxScroll);
+    }
+  }, { passive: false });
+}
+
+
+
+
+
+
+
+
+function openExpandedView(index) {
+  currentExpandedIndex = index;
+  showExpandedOverlay(index);
+}
+
+function showExpandedOverlay(index) {
+  // Create the overlay if it doesn't exist yet
+  if (!expandedOverlay) {
+    expandedOverlay = createDiv('');
+    expandedOverlay.id('expandedOverlay');
+    expandedOverlay.style('position', 'fixed');
+    expandedOverlay.style('top', '0');
+    expandedOverlay.style('left', '0');
+    expandedOverlay.style('width', '100vw');
+    expandedOverlay.style('height', '100vh');
+    expandedOverlay.style('background', 'rgba(0,0,0,0.9)');
+    expandedOverlay.style('opacity', '0'); // start invisible
+    expandedOverlay.style('z-index', '9999');
+    expandedOverlay.style('overflow', 'hidden');
+    expandedOverlay.style('display', 'block');
+
+    // Create the X close button with Geist font
+    expandedCloseButton = createDiv('×');
+    expandedCloseButton.parent(expandedOverlay);
+    expandedCloseButton.style('position', 'absolute');
+    expandedCloseButton.style('top', '20px');
+    expandedCloseButton.style('right', '30px');
+    expandedCloseButton.style('font-size', '36px'); // Slightly larger for the multiplication symbol
+    expandedCloseButton.style('color', '#fff');
+    expandedCloseButton.style('cursor', 'pointer');
+    expandedCloseButton.style('z-index', '10001'); // Higher z-index
+    expandedCloseButton.style('padding', '10px'); // Larger hit area
+    expandedCloseButton.style('font-weight', 'normal'); // Normal weight for the multiplication symbol
+    expandedCloseButton.style('font-family', 'Geist UltraLight, sans-serif'); // Add Geist font
+    expandedCloseButton.style('line-height', '20px'); // Better vertical alignment
+    expandedCloseButton.mousePressed(() => closeExpandedView());
+        
+    // 50/50 split for navigation - ensure these are created BEFORE the image
+    // so they'll be underneath the image in the DOM (fixing the click issue)
+    let leftHalf = createDiv('');
+    leftHalf.parent(expandedOverlay);
+    leftHalf.style('position', 'absolute');
+    leftHalf.style('top', '0');
+    leftHalf.style('left', '0');
+    leftHalf.style('width', '50%');
+    leftHalf.style('height', '100%');
+    leftHalf.id('leftHalf');
+    
+    let rightHalf = createDiv('');
+    rightHalf.parent(expandedOverlay);
+    rightHalf.style('position', 'absolute');
+    rightHalf.style('top', '0');
+    rightHalf.style('left', '50%');
+    rightHalf.style('width', '50%');
+    rightHalf.style('height', '100%');
+    rightHalf.id('rightHalf');
+  }
+
+  updateNavigationControls(index);
+
+  // Remove any old image
+  if (expandedImage) {
+    expandedImage.remove();
+    expandedImage = null;
+  }
+
+  // Fade in the overlay itself
+  anime({
+    targets: expandedOverlay.elt,
+    opacity: 1,
+    duration: 800,
+    easing: 'cubicBezier(.22,1,.36,1)'
+  });
+
+  // Create the new image or video
+  let original = expandedItems[index];
+  let tagName = original.tagName.toLowerCase();
+  
+  if (tagName === 'img') {
+    expandedImage = createImg(original.src, '');
+  } else {
+    expandedImage = createVideo(original.src);
+    expandedImage.attribute('playsinline', '');
+    expandedImage.attribute('muted', '');
+    expandedImage.attribute('autoplay', '');
+    expandedImage.attribute('loop', '');
+  }
+
+  // Absolutely position in the center
+  expandedImage.parent(expandedOverlay);
+  expandedImage.id('expandedImage'); // Add an ID for CSS targeting
+  expandedImage.style('position', 'absolute');
+  expandedImage.style('top', '50%');
+  expandedImage.style('left', '50%');
+  expandedImage.style('transform', 'translate(-50%, -50%) scale(0.95)');
+  expandedImage.style('opacity', '0');
+  expandedImage.style('max-width', '80%');
+  expandedImage.style('max-height', '80%');
+  expandedImage.style('object-fit', 'contain');
+  expandedImage.style('z-index', '10000'); // Keep this above the navigation divs
+  expandedImage.style('pointer-events', 'none'); // CRITICAL: Make image not capture clicks
+  
+  // Animate the new image/video in (with scale)
+  anime({
+    targets: expandedImage.elt,
+    opacity: 1,
+    scale: 1,
+    duration: 800,
+    easing: 'cubicBezier(.22,1,.36,1)',
+    complete: () => {
+      // Reset transform so leftover transitions won't conflict
+      expandedImage.style('transform', 'translate(-50%, -50%)');
+    }
+  });
+}
+
+
+function updateNavigationControls(index) {
+  const leftHalf = document.getElementById('leftHalf');
+  const rightHalf = document.getElementById('rightHalf');
+  
+  if (!leftHalf || !rightHalf) return;
+  
+  // Clear previous event listeners
+  leftHalf.onmousemove = null;
+  rightHalf.onmousemove = null;
+  leftHalf.onmouseleave = null;
+  rightHalf.onmouseleave = null;
+  leftHalf.onclick = null;
+  rightHalf.onclick = null;
+  
+  // Get cursor elements
+  const leftCursor = document.getElementById('left-cursor');
+  const rightCursor = document.getElementById('right-cursor');
+  
+  // Set up left half (previous)
+  if (index > 0) {
+    // Update cursor on mouse movement
+    leftHalf.onmousemove = (e) => {
+      if (leftCursor) {
+        leftCursor.style.display = 'block';
+        leftCursor.style.left = e.clientX + 'px';
+        leftCursor.style.top = e.clientY + 'px';
+      }
+      // Hide right cursor if visible
+      if (rightCursor) rightCursor.style.display = 'none';
+    };
+    
+    leftHalf.onmouseleave = () => {
+      if (leftCursor) leftCursor.style.display = 'none';
+    };
+    
+    leftHalf.onclick = () => showPrevImage();
+    leftHalf.style.cursor = 'none'; // Hide default cursor
+  } else {
+    // First image - no previous
+    leftHalf.style.cursor = 'auto';
+  }
+  
+  // Set up right half (next)
+  if (index < expandedItems.length - 1) {
+    // Next image available
+    rightHalf.onmousemove = (e) => {
+      if (rightCursor) {
+        rightCursor.style.display = 'block';
+        rightCursor.style.left = e.clientX + 'px';
+        rightCursor.style.top = e.clientY + 'px';
+      }
+      // Hide left cursor if visible
+      if (leftCursor) leftCursor.style.display = 'none';
+    };
+    
+    rightHalf.onmouseleave = () => {
+      if (rightCursor) rightCursor.style.display = 'none';
+    };
+    
+    rightHalf.onclick = () => showNextImage();
+    rightHalf.style.cursor = 'none'; // Hide default cursor
+  } else if (index > 0) {
+    // Last image, but can go back
+    rightHalf.onmousemove = (e) => {
+      if (leftCursor) {
+        leftCursor.style.display = 'block';
+        leftCursor.style.left = e.clientX + 'px';
+        leftCursor.style.top = e.clientY + 'px';
+      }
+      // Hide right cursor if visible
+      if (rightCursor) rightCursor.style.display = 'none';
+    };
+    
+    rightHalf.onmouseleave = () => {
+      if (leftCursor) leftCursor.style.display = 'none';
+    };
+    
+    rightHalf.onclick = () => showPrevImage();
+    rightHalf.style.cursor = 'none';
+  } else {
+    // Only one image
+    rightHalf.style.cursor = 'auto';
+  }
+}
+
+
+
+function showNextImage() {
+  if (currentExpandedIndex < expandedItems.length - 1) {
+    currentExpandedIndex++;
+    transitionExpandedImage(currentExpandedIndex, 'next');
+  }
+}
+
+function showPrevImage() {
+  if (currentExpandedIndex > 0) {
+    currentExpandedIndex--;
+    transitionExpandedImage(currentExpandedIndex, 'prev');
+  }
+}
+
+function transitionExpandedImage(index, direction) {
+  if (!expandedImage) {
+    showExpandedOverlay(index);
+    return;
+  }
+
+  // Update navigation controls for the new index
+  updateNavigationControls(index);
+
+  // oldImage is the image currently showing
+  let oldImage = expandedImage;
+
+  // Prepare the new image
+  let original = expandedItems[index];
+  let tagName = original.tagName.toLowerCase();
+  
+  if (tagName === 'img') {
+    expandedImage = createImg(original.src, '');
+  } else {
+    expandedImage = createVideo(original.src);
+    expandedImage.attribute('playsinline', '');
+    expandedImage.attribute('muted', '');
+    expandedImage.attribute('autoplay', '');
+    expandedImage.attribute('loop', '');
+  }
+
+  // Absolutely position the new content at center, offset horizontally
+  expandedImage.parent(expandedOverlay);
+  expandedImage.id('expandedImage');
+  expandedImage.style('position', 'absolute');
+  expandedImage.style('top', '50%');
+  expandedImage.style('left', '50%');
+  expandedImage.style('z-index', '10000'); 
+  expandedImage.style('pointer-events', 'none'); // CRITICAL: Make image not capture clicks
+  
+  // Slide from the right if next, or from the left if prev (no scale)
+  let offsetX = (direction === 'next') ? 30 : -30;
+  // Set initial transform with offsetX
+  expandedImage.style('transform', `translate(-50%, -50%) translateX(${offsetX}px)`);
+  expandedImage.style('opacity', '0');
+  expandedImage.style('max-width', '80%');
+  expandedImage.style('max-height', '80%');
+  expandedImage.style('object-fit', 'contain');
+
+  // Animate old content out
+  anime({
+    targets: oldImage.elt,
+    opacity: 0,
+    translateX: (direction === 'next') ? -30 : 30,
+    duration: 800,
+    easing: 'cubicBezier(1,0,0,1)',
+    complete: () => oldImage.remove()
+  });
+
+  // Animate new content in
+  anime({
+    targets: expandedImage.elt,
+    opacity: 1,
+    translateX: 0,
+    duration: 1000,
+    easing: 'cubicBezier(1,0,0,1)',
+    complete: () => {
+      // Reset transform to only the centering translation
+      expandedImage.style('transform', 'translate(-50%, -50%)');
+    }
+  });
+}
+
+function closeExpandedView() {
+  if (!expandedOverlay) return;
+  
+  console.log("Close button clicked");
+  
+  // Immediately hide custom cursors and remove event listeners from halves
+  const leftCursor = document.getElementById('left-cursor');
+  const rightCursor = document.getElementById('right-cursor');
+  const leftHalf = document.getElementById('leftHalf');
+  const rightHalf = document.getElementById('rightHalf');
+  
+  // Remove all event listeners that could trigger cursor updates
+  if (leftHalf) {
+    leftHalf.onmousemove = null;
+    leftHalf.onmouseleave = null;
+    leftHalf.onclick = null;
+    leftHalf.style.cursor = 'auto';
+  }
+  
+  if (rightHalf) {
+    rightHalf.onmousemove = null;
+    rightHalf.onmouseleave = null;
+    rightHalf.onclick = null;
+    rightHalf.style.cursor = 'auto';
+  }
+  
+  // Immediately hide cursors
+  if (leftCursor) leftCursor.style.display = 'none';
+  if (rightCursor) rightCursor.style.display = 'none';
+  
+  // Add a document mousemove listener to ensure cursor stays hidden
+  // Remove it after animation completes
+  const clearCursors = (e) => {
+    if (leftCursor) leftCursor.style.display = 'none';
+    if (rightCursor) rightCursor.style.display = 'none';
+  };
+  
+  document.addEventListener('mousemove', clearCursors);
+  
+  // Fade out overlay
+  anime({
+    targets: expandedOverlay.elt,
+    opacity: 0,
+    duration: 900,
+    easing: 'cubicBezier(.22,1,.36,1)',
+    complete: () => {
+      // Remove the document mousemove listener
+      document.removeEventListener('mousemove', clearCursors);
+      
+      // Completely remove the overlay elements rather than just hiding them
+      if (expandedImage) {
+        expandedImage.remove();
+        expandedImage = null;
+      }
+      
+      // Remove the overlay itself
+      expandedOverlay.remove();
+      expandedOverlay = null;
+      
+      // Reset the expanded index
+      currentExpandedIndex = -1;
+    }
+  });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function setupDesktop() {
   desktopEngine = Engine.create();
   desktopWorld = desktopEngine.world;
@@ -386,59 +919,272 @@ function setupDesktop() {
   World.add(desktopWorld, previewBody);
   oldMousePos.x = mouseX - ghostBallOffset.x;
   oldMousePos.y = mouseY - ghostBallOffset.y;
+
+  createCursorElements();
+//  setupBackButton(); // Add this line at the end
+
 }
+
+function initializeBackButtonHover() {
+  // Create the back text element and set up hover animations
+  window.backHomeText = setupBackButton();
+}
+
+
+
+function createCursorElements() {
+  // Create container for custom cursors
+  const cursorContainer = createDiv('');
+  cursorContainer.id('cursor-container');
+  cursorContainer.style('position', 'fixed');
+  cursorContainer.style('top', '0');
+  cursorContainer.style('left', '0');
+  cursorContainer.style('pointer-events', 'none'); // Important: don't capture clicks
+  cursorContainer.style('z-index', '99999'); // Above everything
+  
+  // Left arrow cursor
+  const leftCursor = createDiv('←');
+  leftCursor.parent(cursorContainer);
+  leftCursor.id('left-cursor');
+  leftCursor.class('custom-cursor');
+  leftCursor.style('display', 'none');
+  leftCursor.style('position', 'fixed');
+  leftCursor.style('font-family', 'Geist UltraLight, sans-serif');
+  leftCursor.style('font-size', '28px');
+  leftCursor.style('color', 'white');
+  leftCursor.style('text-shadow', '0 0 2px rgba(0,0,0,0.5)');
+  leftCursor.style('transform', 'translate(-50%, -50%)');
+  leftCursor.style('pointer-events', 'none');
+  
+  // Right arrow cursor
+  const rightCursor = createDiv('→');
+  rightCursor.parent(cursorContainer);
+  rightCursor.id('right-cursor');
+  rightCursor.class('custom-cursor');
+  rightCursor.style('display', 'none');
+  rightCursor.style('position', 'fixed');
+  rightCursor.style('font-family', 'Geist UltraLight, sans-serif');
+  rightCursor.style('font-size', '28px');
+  rightCursor.style('color', 'white');
+  rightCursor.style('text-shadow', '0 0 2px rgba(0,0,0,0.5)');
+  rightCursor.style('transform', 'translate(-50%, -50%)');
+  rightCursor.style('pointer-events', 'none');
+}
+
+function setupBackButton() {
+  // Create arrow
+  backButton = createDiv('←');
+  backButton.id('backButton');
+  backButton.style('position', 'absolute');
+  backButton.style('font-family', 'Geist UltraLight, sans-serif');
+  backButton.style('cursor', 'pointer');
+  backButton.style('opacity', '0.2');
+
+  // Create text
+  backHomeText = createDiv('Back home');
+  backHomeText.id('backHomeText');
+  backHomeText.style('position', 'absolute');
+  backHomeText.style('transform', 'translateX(-120px)');
+
+  backHomeText.style('font-family', 'Geist UltraLight, sans-serif');
+  backHomeText.style('opacity', '0'); // start hidden
+
+
+  backButton.mouseOver(() => {
+    anime({
+      targets: backButton.elt,
+      opacity: 1,
+      duration: 400,
+      easing: 'easeOutCubic'
+    });
+  });
+
+  backButton.mouseOut(() => {
+    anime({
+      targets: backButton.elt,
+      opacity: 0.2, // instead of 0.2
+      duration: 300,
+      easing: 'easeOutCubic'
+    });
+  });
+    
+
+  // Add arrow hover to show/hide text, if you like
+  backButton.mouseOver(() => {
+    anime({
+      targets: backHomeText.elt,
+      translateX: -118,  // <-- Adjust this value to change how far the text shifts on hover
+      opacity: 0.2,
+      duration: 400,
+      easing: 'cubicBezier(1,0,0,1)',
+    });
+  });
+  backButton.mouseOut(() => {
+    anime({
+      targets: backHomeText.elt,
+      translateX: -130,  // <-- Adjust this value for mouse-out behavior
+      opacity: 0,
+      duration: 400,
+      easing: 'cubicBezier(1,0,0,1)',
+    });
+  });
+    // Click closes the gallery
+  backButton.mousePressed(() => {
+    closeGallery();
+  });
+
+  // Finally, position them
+  updateBackButtonPosition();
+}
+
+function updateBackButtonPosition() {
+  if (!backButton || !backHomeText) return;
+
+  // Make sure they scale with your current text size
+  backButton.style('z-index', '1000');
+backHomeText.style('z-index', '1000');
+backButton.style('opacity', '0.2');
+backButton.style('padding', '20px');
+backButton.style('margin', '-20px');
+
+
+
+  const fontSize = TEXTSCALE * scaleFactor;
+  backButton.style('font-size', fontSize + 'px');
+  backHomeText.style('font-size', fontSize + 'px');
+
+  // Decide your X offsets
+  // For example, place the text near the right edge:
+  const textX = rightPanelX + rightPanelW; 
+  // Now place it EXACTLY at phraseY:
+  backHomeText.position(textX, phraseY);
+
+  // Put the arrow just to the left of that text, at the same Y
+  const arrowX = textX - (fontSize * 2); // adjust as needed
+  backButton.position(arrowX, phraseY);
+}
+
+function updateBackTextPosition(textElement, margin) {
+  if (!textElement || !backButton) return;
+  
+  const fontSize = TEXTSCALE * scaleFactor;
+  const buttonSize = fontSize * 2.4;
+  
+  // Position the text to the right of the arrow
+  textElement.position(
+    rightPanelX + rightPanelW - buttonSize + (fontSize * 1.2), // Position after the arrow
+    rightPanelY + (fontSize * 0.8) // Align vertically with arrow
+  );
+}
+
+function showBackButton() {
+  if (!backButton) {
+    setupBackButton();
+  }
+  
+  // Animate button appearance
+  anime({
+    targets: backButton.elt,
+    opacity: 1,
+    translateX: 0,
+    duration: 600,
+    easing: 'easeOutQuint'
+  });
+}
+function hideBackButton() {
+  if (backButton) {
+    anime({
+      targets: backButton.elt,
+      opacity: 0,
+      translateX: +20,
+      duration: 400,
+      easing: 'easeInQuint'
+    });
+    
+    // Also hide the text if it exists
+    if (window.backHomeText) {
+      anime({
+        targets: window.backHomeText.elt,
+        opacity: 0,
+        duration: 300,
+        easing: 'easeInQuint'
+      });
+    }
+  }
+}
+
+function closeGallery() {
+  // Only proceed if we're in gallery mode
+  if (leftPanelMode !== "htmlGallery") return;
+  
+  console.log("Closing gallery, returning to physics simulation");
+  
+  // Hide the back button first
+  hideBackButton();
+  
+  // Fade out the HTML gallery
+  anime({
+    targets: htmlGallery.elt,
+    opacity: 0,
+    scale: 0.98,
+    duration: 700,
+    easing: 'easeInOutQuint'
+  });
+  
+  // Fade out the description
+  anime({
+    targets: htmlDescription.elt,
+    opacity: 0,
+    duration: 400,
+    easing: 'easeInOutQuint'
+  });
+  
+  // Fade out the physics cover (reveal physics simulation)
+  let coverObj = { alpha: physicsCoverAlpha };
+  anime({
+    targets: coverObj,
+    alpha: 255,
+    duration: 700,
+    easing: 'easeInOutQuint',
+    update: function() {
+      physicsCoverAlpha = coverObj.alpha;
+    },
+      complete: function() {
+      // Reset state after animations complete
+      leftPanelMode = "physics";
+      activeProject = null;
+      
+      // Clear gallery content
+      document.getElementById('galleryContent').innerHTML = "";
+      
+      // Reset scroll position
+      targetScrollY = 0;
+      currentScrollY = 0;
+      htmlGallery.elt.scrollTop = 0;
+      
+      // Restore physics state
+      centerArrowBall.setTargetToMouse();
+    }
+  });
+}
+
+
 
 function drawDesktop() {
   noStroke();
   
   push();
-  // Only draw the physics simulation background when in "physics" mode and not during a gallery transition.
+  // Draw physics simulation background if in physics mode.
   if (!galleryTransitionActive && leftPanelMode === "physics") {
     push();
-    fill(255, physicsAlpha);
+    fill(255, 255, 0, physicsAlpha);
     rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
     pop();
   }
   
-  // If in transition from physics to gallery (or if already in gallery)...
-  if (leftPanelMode === "transition" || leftPanelMode === "gallery") {
-    // If a gallery transition (when switching projects) is active, handle that:
-    if (galleryTransitionActive) {
-      let nowSec = millis() / 1000; // use seconds consistently
-      let t = constrain((nowSec - galleryTransitionStartTime) / galleryTransitionDuration, 0, 1);
-      let easeT = easeInOutQuint(t);
-      // Animate our dedicated transition offset from transitionOffsetStart to 0:
-      transitionOffset = lerp(transitionOffsetStart, 0, easeT);
-      let oldAlpha = lerp(255, 0, t);
-      let newAlpha = lerp(0, 255, t);
-      // Pass the transitionOffset to draw the old gallery images.
-      drawGalleryImages(oldGalleryImages, oldAlpha, transitionOffset);
-      // New gallery images remain at offset 0.
-      drawGalleryImages(newGalleryImages, newAlpha, 0);
-      if (t >= 1) {
-        galleryTransitionActive = false;
-        activeProject = upcomingProject;
-        projectGalleryImages = newGalleryImages.slice();
-      }
-      return;
-    }
-                
-    // Otherwise, use the physics-to-gallery fade transition.
-    let nowSec = millis() / 1000;
-    let t = constrain((nowSec - fadeStartTime) / fadeDuration, 0, 1);
-    let eased = easeInOutQuad(t);
-    physicsAlpha = lerp(255, 0, eased);
-    galleryAlpha = lerp(0, 255, eased);
-    
-    if (t >= 1) {
-      leftPanelMode = "gallery";
-    }
-    drawGallery(galleryAlpha);
-  }
-  
   pop();
   
-  // Right panel drawing.
+  // Draw right panel (description panel on canvas)
   fill(255);
   rect(rightPanelX, rightPanelY, rightPanelW, rightPanelH);
   
@@ -476,262 +1222,224 @@ function drawDesktop() {
     drawPhraseDesktop();
   }
   
-  if (activeProject !== null) {
-    drawProjectDescriptionOverlay();
-  }
-  
+  // Draw the project index on canvas.
   drawProjectIndex();
-  push();
-  fill('red');
-  textSize(20);
-  textAlign(CENTER, BOTTOM);
-  text("Transition Offset: " + nf(transitionOffset, 1, 2) + " | FPS: " + nf(frameRate(), 1, 2), width / 2, height - 10);
-  pop();
-  pop();
+  
+  // NEW: If a project is open (HTML gallery mode), cover the left panel.
+  if (leftPanelMode === "htmlGallery") {
+    updateScroll();  // Add this line
 
-}
-
-function startGalleryTransition(proj) {
-  projectDescriptionFadeStartTime = millis() / 1000;
-
-  if (activeProject !== null && activeProject !== proj) {
-    galleryTransitionActive = true;
-    galleryTransitionStartTime = millis() / 1000;
-    galleryTransitionDuration = fadeDuration;
-    // Capture the current scroll offset of the old gallery
-    oldScrollOffset = scrollOffset;
-    
-    // Force the transition offset to a known starting value (if needed)
-    // (You can remove transitionOffsetStart if not using it for this purpose.)
-    // transitionOffset = transitionOffsetStart;
-    
-    oldGalleryImages = projectGalleryImages.slice(); // copy current media
-    
-    if (!proj.media || proj.media.length === 0) {
-      proj.media = [];
-      for (let i = 1; i <= 3; i++) {
-        let pg = createGraphics(200, 150);
-        pg.background(200);
-        pg.textSize(32);
-        pg.fill(0);
-        pg.text("Test " + i, 50, 75);
-        proj.media.push({ type: "image", src: "", img: pg });
-      }
-    }
-    newGalleryImages = proj.media.slice();
-    upcomingProject = proj;
-    leftPanelMode = "transition";
-  } else {
-    leftPanelMode = "transition";
-    fadeStartTime = millis() / 1000;
-    scrollOffset = 0;
-    if (!proj.media || proj.media.length === 0) {
-      // Create dummy media if needed...
-    }
-    projectGalleryImages = proj.media.slice();
-    activeProject = proj;
+    push();
+    noStroke();
+    // Draw a rectangle in the background color with an alpha that fades in.
+    fill(backgroundColor[0], physicsCoverAlpha);
+    rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
+    pop();
   }
 }
 
+//
+// NEW: HTML Gallery Loader using Anime.js
 
-function drawGallery(alphaVal) {
-  galleryImageBoxes = []; // Clear previous boxes
+function loadProjectHTML(project) {
+  htmlGallery.style('pointer-events', 'auto');
   
-  // If in a gallery transition between projects:
-  if (galleryTransitionActive) {
-    let nowSec = millis() / 1000; // use seconds consistently
-    let t = constrain((nowSec - galleryTransitionStartTime) / galleryTransitionDuration, 0, 1);
-    let easeT = easeInOutQuint(t);
-    
-    // Animate the scroll offset from the old scroll offset to 0 (new gallery's start)
-    let animatedScroll = lerp(oldScrollOffset, 0, easeT);
-    
-    let oldAlpha = lerp(255, 0, t);
-    let newAlpha = lerp(0, 255, t);
-    
-    // Draw the old gallery images with the animated scroll offset.
-    drawGalleryImages(oldGalleryImages, oldAlpha, animatedScroll);
-    
-    // New gallery images remain at offset 0.
-    drawGalleryImages(newGalleryImages, newAlpha, 0);
-    
-    if (t >= 1) {
-      galleryTransitionActive = false;
-      activeProject = upcomingProject;
-      projectGalleryImages = newGalleryImages.slice();
-    }
-    return;
-  }
-    
-  // Otherwise, normal gallery drawing:
-  let mediaItems = activeProject.media;
-  if (!mediaItems || mediaItems.length === 0) {
-    fill(0, alphaVal);
-    textSize(20);
-    text("No media available", leftPanelX + 20, 20);
-    return;
-  }
+  // First, reset scroll variables but don't apply them yet
+  const newTargetScrollY = window.innerHeight * 3;
   
-  // Use the global scrollOffset for normal gallery scrolling
-  scrollOffset = lerp(scrollOffset, targetScrollOffset, 0.5);
+  anime({
+    targets: htmlGallery.elt,
+    opacity: 0,
+    scale: 0.98,
+    duration: 700,
+    easing: 'easeInOutQuint',
+    complete: function() {
+      // Reset position before content change (while invisible)
+      htmlGallery.elt.style.transform = 'translateY(-20px)';
+      
+      // Build content
+      let content = '';
+      project.media.forEach((item) => {
+        if (item.type === "image") {
+          content += `
+            <img 
+              src="${item.src}" 
+              class="gallery-item" 
+              style="
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                margin-bottom: 20px;
+                display: block;
+                object-fit: contain;
+                opacity: 1;
+                transform-origin: center;
+              " 
+              loading="lazy"
+            >`;
+        } else if (item.type === "video") {
+          content += `
+            <video 
+              src="${item.src}" 
+              class="gallery-item" 
+              style="
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+                margin-bottom: 20px;
+                display: block;
+                object-fit: contain;
+                opacity: 1;
+                transform-origin: center;
+              " 
+              playsinline 
+              loop 
+              muted 
+              autoplay
+            ></video>`;
+        }
+      });
+      
+      // Update content and scroll position while opacity is 0
+      document.getElementById('galleryContent').innerHTML = content;
+      targetScrollY = newTargetScrollY;
+      currentScrollY = newTargetScrollY;
+      scrollVelocity = 0;
+      htmlGallery.elt.scrollTop = newTargetScrollY;
+      
+      // Add hover effects after content is in DOM
+      const items = document.getElementsByClassName('gallery-item');
+      expandedItems = Array.from(items);
+      expandedItems.forEach((item, index) => {
+        item.addEventListener('click', () => {
+          openExpandedView(index);
+        });
+      });
+            
+      let currentHoveredItem = null;
+    
+      // Function to update all items based on current hovered item
+      const updateItemStates = (hoveredItem) => {
+        Array.from(items).forEach(item => {
+          if (item === hoveredItem) {
+            // Expand the hovered item
+            anime({
+              targets: item,
+              scale: 1,
+              opacity: 1,
+              duration: 400,
+              easing: 'cubicBezier(1,0,0,1)',
+            });
+          } else {
+            // Shrink all other items
+            anime({
+              targets: item,
+              scale: 0.98,
+              opacity: 0.8,
+              duration: 400,
+              easing: 'cubicBezier(1,0,0,1)',
+            });
+          }
+        });
+      };
+      
+      // Add mouse enter/leave handlers to each item
+      Array.from(items).forEach(item => {
+        item.addEventListener('mouseenter', () => {
+          currentHoveredItem = item;
+          updateItemStates(item);
+        });
+        
+        item.addEventListener('mouseleave', () => {
+          // Only reset if we're leaving the currently hovered item
+          if (item === currentHoveredItem) {
+            // Small delay to check if we entered another item
+            setTimeout(() => {
+              if (currentHoveredItem === item) {
+                currentHoveredItem = null;
+                // Reset all items 
+                anime({
+                  targets: '.gallery-item',
+                  scale: 1,
+                  opacity: 1,
+                  duration: 200,
+                  easing: 'easeOutQuint'
+                });
+              }
+            }, 50);
+          }
+        });
+      });
+      
+      // Also add a mouse leave handler to the entire gallery container
+      document.getElementById('galleryContent').addEventListener('mouseleave', () => {
+        currentHoveredItem = null;
+        // Reset all items
+        anime({
+          targets: '.gallery-item',
+          scale: 1,
+          opacity: 1,
+          duration: 500,
+          easing: 'easeInOutQuint'
+        });
+      });
+      
+      // Fade back in with upward movement
+      anime({
+        targets: htmlGallery.elt,
+        scale: 1,
+        opacity: 1,
+        translateY: '0px',
+        duration: 1400,
+        easing: 'cubicBezier(0,0,0,1)',
+      });
 
-  let y = rightPanelY + scrollOffset;
-  let spacing = 20;
-  let maxMediaWidth = leftPanelW - 40;
-  
-  for (let i = 0; i < mediaItems.length; i++) {
-    let item = mediaItems[i];
-    let displayWidth = maxMediaWidth;
-    let displayHeight = 0;
-    
-    if (item.type === "image") {
-      if (!item.img) {
-        item.img = loadImage(item.src);
-      }
-      let scaleVal = displayWidth / item.img.width;
-      displayHeight = item.img.height * scaleVal;
-      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
-      tint(255, alphaVal);
-      image(item.img, leftPanelX + 20, y, displayWidth, displayHeight);
-    } else if (item.type === "video") {
-      let vid;
-      if (!item.video) {
-        vid = createVideo(item.src);
-        vid.elt.setAttribute("playsinline", "");
-        vid.volume(0);
-        vid.loop();
-        vid.hide();
-        item.video = vid;
-      } else {
-        vid = item.video;
-      }
-      let vWidth = vid.elt.videoWidth || 640;
-      let vHeight = vid.elt.videoHeight || 360;
-      let scaleVal = displayWidth / vWidth;
-      displayHeight = vHeight * scaleVal;
-      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
-      let videoFrame = vid.get();
-      tint(255, alphaVal);
-      image(videoFrame, leftPanelX + 20, y, displayWidth, displayHeight);
-      if (vid.elt.paused) {
-        vid.play();
-      }
-    }
-    y += displayHeight + spacing;
-  }
+      // Update description
+      anime({
+        targets: htmlDescription.elt,
+        opacity: 0,
+        duration: 400,
+        easing: 'easeInOutQuint',
+        complete: function() {
+          htmlDescription.html(project.description);
+          htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
+          anime({
+            targets: htmlDescription.elt,
+            opacity: 1,
+            duration: 500,
+            easing: 'easeInOutQuint'
+          });
+        }
+      });
+
+      // Animate the physics cover
+      let coverObj = { alpha: physicsCoverAlpha };
+      anime({
+        targets: coverObj,
+        alpha: 255,
+        duration: 700,
+        easing: 'easeInOutQuint',
+        update: function() {
+          physicsCoverAlpha = coverObj.alpha;
+        }
+      });
+            
+      // Show the back button with a slight delay
+      setTimeout(() => {
+        if (!backButton) {
+          setupBackButton();
+        }
+        showBackButton();
+      }, 400);
+          }
+  });
 }
 
-// NEW: Helper to draw gallery media from an array with a given tint alpha.
-function drawGalleryImages(imageArray, tintAlpha, offset) {
-  let y = rightPanelY + offset;
-  let spacing = 20;
-  let maxMediaWidth = leftPanelW - 40;
-  
-  for (let i = 0; i < imageArray.length; i++) {
-    let item = imageArray[i];
-    let displayWidth = maxMediaWidth;
-    let displayHeight = 0;
-    
-    if (item.type === "image") {
-      if (!item.img) {
-        item.img = loadImage(item.src);
-      }
-      let scaleVal = displayWidth / item.img.width;
-      displayHeight = item.img.height * scaleVal;
-      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
-      tint(255, tintAlpha);
-      image(item.img, leftPanelX + 20, y, displayWidth, displayHeight);
-    } else if (item.type === "video") {
-      let vid;
-      if (!item.video) {
-        vid = createVideo(item.src);
-        vid.elt.setAttribute("playsinline", "");
-        vid.volume(0);
-        vid.loop();
-        vid.hide();
-        item.video = vid;
-      } else {
-        vid = item.video;
-      }
-      let vWidth = vid.elt.videoWidth || 640;
-      let vHeight = vid.elt.videoHeight || 360;
-      let scaleVal = displayWidth / vWidth;
-      displayHeight = vHeight * scaleVal;
-      galleryImageBoxes.push({ x: leftPanelX + 20, y: y, w: displayWidth, h: displayHeight, index: i });
-      let videoFrame = vid.get();
-      tint(255, tintAlpha);
-      image(videoFrame, leftPanelX + 20, y, displayWidth, displayHeight);
-      if (vid.elt.paused) {
-        vid.play();
-      }
-    }
-    y += displayHeight + spacing;
-  }
-}
 
-function drawProjectDescriptionOverlay() {
-  let lines = phrase.split("\n");
-  let overlayX = phraseX;
-  let overlayY = phraseY;
-  let overlayW = rightPanelW - 2 * phrasePadding;
-  let overlayH = lines.length * (30 * scaleFactor);
 
-  noStroke();
-  fill(255);
-  rect(overlayX, overlayY, overlayW, overlayH);
 
-  let elapsed = (millis() / 1000) - projectDescriptionFadeStartTime;
-  let t = constrain(elapsed / projectDescriptionFadeDuration, 0, 1);
-  let fadeAlpha = easeInOutSine(t);
-
-  textSize(TEXTSCALE * scaleFactor);
-  textAlign(LEFT, TOP);
-  fill(...phraseTextColor, fadeAlpha * 255);
-  let desc = activeProject.description ? activeProject.description : ("Description for " + activeProject.name);
-  text(desc, overlayX, overlayY, overlayW, overlayH);
-}
-
-function mouseWheel(event) {
-  if (galleryTransitionActive) return;
-  if (leftPanelMode === "gallery") {
-    // Update the target scroll offset based on the mouse wheel delta.
-    targetScrollOffset -= event.delta;
-  }
-}
-
-function mousePressed() {
-  if (leftPanelMode === "gallery") {
-    for (let box of galleryImageBoxes) {
-      if (
-        mouseX >= box.x &&
-        mouseX <= box.x + box.w &&
-        mouseY >= box.y &&
-        mouseY <= box.y + box.h
-      ) {
-        enterExpandedMode(box.index);
-        return;
-      }
-    }
-  }
-  
-  if (leftPanelMode === "expanded") {
-    if (mouseX >= 10 && mouseX <= 40 && mouseY >= 10 && mouseY <= 40) {
-      leftPanelMode = "gallery";
-      cursor(ARROW);
-      return;
-    }
-    if (mouseX < width / 2 && expandedImageIndex > 0) {
-      expandedImageIndex--;
-      return;
-    }
-    if (mouseX >= width / 2 && expandedImageIndex < projectGalleryImages.length - 1) {
-      expandedImageIndex++;
-      return;
-    }
-    return;
-  }
-  
-  if (!MOBILE_MODE) {
+  function mousePressed() {
+    // Check if a project index item was clicked.
     let a = textAscent();
     let d = textDescent();
     let textHeight = a + d;
@@ -744,26 +1452,42 @@ function mousePressed() {
         mouseY <= proj.y - hitMargin + textHeight + 2 * hitMargin
       ) {
         console.log("Project clicked:", proj.name);
+        // CHANGE: Set activeProject immediately
         activeProject = proj;
+        // Update project state variables
         projectDescriptionFadeStartTime = millis() / 1000;
-        startGalleryTransition(proj);
+        
+        // Set the left panel mode immediately to mark it as selected
+        leftPanelMode = "htmlGallery";
+        
+        // Start transition to cover physics
+        
+        
+        // Then continue with loading the HTML gallery
+        loadProjectHTML(proj);
         return;
       }
     }
-  }
-  
+    
+  // Existing behavior for letter balls and other interactions.
   if (MOBILE_MODE) {
     mousePressedMobile();
     return;
   }
   if (isFadingBalls) return;
   if (!isInsideInteractiveArea(mouseX - ballSpawnOffset.x, mouseY - ballSpawnOffset.y)) return;
+  
   if (phraseIndex < phrase.length) {
     let c = phrase[phraseIndex];
     let upperC = c.toUpperCase();
-    createLetterBallDesktop(mouseX - ballSpawnOffset.x, mouseY - ballSpawnOffset.y, upperC);
+    createLetterBallDesktop(
+      mouseX - ballSpawnOffset.x,
+      mouseY - ballSpawnOffset.y,
+      upperC
+    );
     letterSpawnTimes[phraseIndex] = millis() / 1000;
     phraseIndex++;
+    
     if (phraseIndex === phrase.length) {
       startFadingBallsDesktop();
     }
@@ -1103,7 +1827,7 @@ class CenterArrowBall {
         t = 1;
         this.arrowState = (this.target === "mouse") ? "TRACKING_MOUSE" : "TRACKING_BALL";
       }
-      let eased = easeInOutQuad(t);
+      let eased = easeInOutQuint(t);
       this.currentAngle = lerpAngle(this.easeFromAngle, liveAngle, eased);
     } else {
       this.currentAngle = liveAngle;
