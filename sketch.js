@@ -268,13 +268,38 @@ let projectIndex = [
   },
 
 
+  {
+    name: "Experiments in Time",
+    url: "project2.html",
+    glyph: "    ③  ",
+    tags: ["Physics", "Cinema 4D"],
+description: "A a series of visual experiments that try to visualize the concept of passing time.",
+    media: [
+      { type: "video", src: "Time_Passing.mp4" },
+      { type: "video", src: "Time_Events.mp4" },
+
+    ]
+  },
+
+    {
+    name: "Shenkar Grad Show Branding",
+    url: "project2.html",
+    glyph: "    ④  ",
+    tags: ["Branding", "Generative"],
+description: "Generative branding for Shenkar’s graduate exhibition. <br><br>One logotype that endlessly changes based on different parameters. The logo’s colors present the students’ work from the exhibition.",
+    media: [
+      { type: "video", src: "SKGS_Site.mp4" },
+      { type: "image", src: "SKGS_Poster.png" },
+
+    ]
+  },
 
 
 
   {
     name: "Wix Holidays Moving Posters",
     url: "project3.html",
-    glyph: "    ③  ",
+    glyph: "    ⑤  ",
     tags: ["Interactive Experience", "Creative Coding"],
     description: "An interactive exploration of festive moving posters.",
     media: [
