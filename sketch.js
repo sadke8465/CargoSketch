@@ -85,6 +85,7 @@ function windowResized() {
   }
 }
 
+
 // 1) Detect if mobile device (simple check)
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
@@ -148,7 +149,27 @@ let currentScrollY = 0;
 let scrollVelocity = 0;
 const SCROLL_EASE = 0.1;
 const SCROLL_FRICTION = 0.95;
-const SCROLL_SENSITIVITY = 0.01;
+const SCROLL_SENSITIVITY = 0.03;
+
+
+
+
+
+
+
+
+let panelCornerRadius = 20;       // Corner radius for panels
+let shadowOffsetX = 0;           // Shadow X offset
+let shadowOffsetY = 0;           // Shadow Y offset
+let shadowBlur = 35;              // Shadow blur amount
+let shadowColor = [0, 0, 0, 10];  // Shadow color with alpha (RGBA)
+
+
+
+
+
+
+
 
 // --------------------------------------------------------------------------
 // GLOBAL VARIABLES FOR MODES
@@ -183,7 +204,7 @@ let scrollOffset = 0;           // Vertical scroll offset for the gallery
 
 
 let ballColorPalette = [
-  "#FF7D01",
+    "BDBDBD", "#A8A8A8", "#DADADA",
 
 ];
 
@@ -249,8 +270,6 @@ let projectIndex = [
     tags: ["Motion Design", "Generative", "Touchdesigner"],
     description: "The book presents a structured exploration of connections between books in a private library. It is divided into three sections: one comparing groups of books, another documenting bookmarks found inside them, and a third focusing on sticky notes with their transcriptions and analysis. <br><br>The design is minimal, using a monochromatic palette, clean typography, and structured layouts. Each element is presented without excess decoration, emphasizing organization and clarity. The content is arranged systematically, allowing relationships between books, bookmarks, and notes to emerge without added interpretation.",
     media: [
-      { type: "image", src: "PAGMAR_29_Full.png" },
-      { type: "video", src: "Wix_Sukot_WIP3.mp4" },
       { type: "image", src: "PAGMAR_1_Full.png" },
       { type: "image", src: "PAGMAR_2_Full.png" },
       { type: "image", src: "PAGMAR_3_Full.png" },
@@ -260,9 +279,23 @@ let projectIndex = [
       { type: "image", src: "PAGMAR_7_Full.png" },
       { type: "image", src: "PAGMAR_8_Full.png" },
       { type: "image", src: "PAGMAR_9_Full.png" },
-      { type: "image", src: "PAGMAR_9_Thumb.png" },
       { type: "image", src: "PAGMAR_10_Full.png" },
-      { type: "image", src: "PAGMAR_10_Thumb.png" },
+      { type: "image", src: "PAGMAR_20_Full.png" },
+      { type: "image", src: "PAGMAR_21_Full.png" },
+      { type: "image", src: "PAGMAR_22_Full.png" },
+      { type: "image", src: "PAGMAR_23_Full.png" },
+      { type: "image", src: "PAGMAR_24_Full.png" },
+      { type: "image", src: "PAGMAR_25_Full.png" },
+      { type: "image", src: "PAGMAR_26_Full.png" },
+      { type: "image", src: "PAGMAR_27_Full.png" },
+      { type: "image", src: "PAGMAR_28_Full.png" },
+      { type: "image", src: "PAGMAR_29_Full.png" },
+      { type: "image", src: "PAGMAR_30_Full.png" },
+      { type: "image", src: "PAGMAR_31_Full.png" },
+      { type: "image", src: "PAGMAR_32_Full.png" },
+      { type: "image", src: "PAGMAR_33_Full.png" },
+      { type: "image", src: "PAGMAR_34_Full.png" },
+      { type: "image", src: "PAGMAR_35_Full.png" },
 
     ]
   },
@@ -277,6 +310,10 @@ description: "A a series of visual experiments that try to visualize the concept
     media: [
       { type: "video", src: "Time_Passing.mp4" },
       { type: "video", src: "Time_Events.mp4" },
+      { type: "image", src: "Time_Subsurface.png" },
+      { type: "video", src: "Time_Fall.mp4" },
+      { type: "video", src: "Time_Elephant.mp4" },
+      { type: "image", src: "Time_Color.png" },
 
     ]
   },
@@ -288,8 +325,8 @@ description: "A a series of visual experiments that try to visualize the concept
     tags: ["Branding", "Generative"],
 description: "Generative branding for Shenkar’s graduate exhibition. <br><br>One logotype that endlessly changes based on different parameters. The logo’s colors present the students’ work from the exhibition.",
     media: [
-      { type: "video", src: "SKGS_Site.mp4" },
-      { type: "image", src: "SKGS_Poster.png" },
+     // { type: "video", src: "SKGS_Site.mp4" },
+     // { type: "image", src: "SKGS_Poster.png" },
 
     ]
   },
@@ -357,14 +394,14 @@ let fadeBallsStartTime = 1.5;
 let fadeBallsDuration = 0.1;
 
 // Desktop colors and physics configuration
-let backgroundColor = [35];
+let backgroundColor = [251, 251, 253];
 let phraseTextColor = [0];
-let highlightBallFill = [255];
-let highlightTextFill = [35];
+let highlightBallFill = [35];
+let highlightTextFill = [255];
 let defaultBallFill = [255];
 let defaultTextFill = [35];
-let arrowCircleColor = [255];
-let arrowGlyphColor = [35];
+let arrowCircleColor = [91];
+let arrowGlyphColor = [255];
 let ghostBallFill = [127, 50];
 let ghostTextFill = [0, 50];
 let interactiveOutlineColor = [170];
@@ -376,6 +413,429 @@ let physicsConfigDesktop = {
   restitution: 0.8
 };
 let arrowEaseDuration = 0.5;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+let colorSchemes = [
+  // --------------------------------------------
+  // 1) Blueberry Lime
+  // --------------------------------------------
+  {
+    ballPalette: ["#4C4FE3", "#00B761", "#00B761"],
+    ballTextColor: "#FFFFFF",
+    // A bright chartreuse highlight that fits with the lime
+    highlightBallColor: "#CCFF1A",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#3240A8",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#AAFFE0"
+  },
+  // --------------------------------------------
+  // 2) Vibrant Magenta
+  // --------------------------------------------
+  {
+    ballPalette: ["#C2185B", "#E91E63", "#AD1457"],
+    ballTextColor: "#FAFAFA",
+    // A bright aqua/teal highlight for contrast
+    highlightBallColor: "#00E5FF",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#6A1B9A",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FCE4EC"
+  },
+  // --------------------------------------------
+  // 3) Coffee & Cream
+  // --------------------------------------------
+  {
+    ballPalette: ["#6F4E37", "#8B6B51", "#997870"],
+    ballTextColor: "#FFFFFF",
+    // A soft sky-blue accent
+    highlightBallColor: "#B5EAEA",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#2E1C0E",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#F7EFE7"
+  },
+  // --------------------------------------------
+  // 4) Urban Sky
+  // --------------------------------------------
+  {
+    ballPalette: ["#30475E", "#1E272E", "#3E5C7F"],
+    ballTextColor: "#FFFFFF",
+    // A golden tone that stands out from the blues/grays
+    highlightBallColor: "#F9C74F",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#222831",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#DCE3ED"
+  },
+  // --------------------------------------------
+  // 5) Retro Brown
+  // --------------------------------------------
+  {
+    ballPalette: ["#D19A66", "#E6B89C", "#EEE5DC"],
+    ballTextColor: "#4B2E2E",
+    // A warm golden accent
+    highlightBallColor: "#F2C66E",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#9C6644",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#F4ECE4"
+  },
+  // --------------------------------------------
+  // 6) Crisp Redwood
+  // --------------------------------------------
+  {
+    ballPalette: ["#B23A48", "#DB5461", "#ED6A5A"],
+    ballTextColor: "#FFFFFF",
+    // A bright green to offset all the reds
+    highlightBallColor: "#98E39E",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#7A1B2B",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#F4E1DE"
+  },
+  // --------------------------------------------
+  // 7) Tropical Sunrise
+  // --------------------------------------------
+  {
+    ballPalette: ["#FF9770", "#FFD07F", "#FF9770"],
+    ballTextColor: "#402306",
+    // A pale yellow highlight
+    highlightBallColor: "#FFF7B0",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#F4511E",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFF3E2"
+  },
+  // --------------------------------------------
+  // 8) Desert Mirage
+  // --------------------------------------------
+  {
+    ballPalette: ["#CBAE66", "#D4C8A0", "#BAA378"],
+    ballTextColor: "#2E1D04",
+    // A soft green for balance
+    highlightBallColor: "#B8E1B8",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#8C7A4F",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#F2E6D4"
+  },
+  // --------------------------------------------
+  // 9) Dreamy Orchard
+  // --------------------------------------------
+  {
+    ballPalette: ["#C7D9B7", "#E4D0F7", "#F5C7F7"],
+    ballTextColor: "#4A4453",
+    // A gentle aqua accent
+    highlightBallColor: "#B8EEE7",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#9779B0",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FDFDFE"
+  },
+  // --------------------------------------------
+  // 10) Royal Indigo
+  // --------------------------------------------
+  {
+    ballPalette: ["#4B0082", "#5F1E90", "#6F37A9"],
+    ballTextColor: "#F0ECE9",
+    // A golden accent to pop against indigo
+    highlightBallColor: "#FFD13F",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#2E0B3E",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#E1D7EC"
+  },
+
+  // --------------------------------------------
+  // 11) Bright Green Scheme
+  // --------------------------------------------
+  {
+    ballPalette: ["#2EC76F", "#2EC76F", "#2EC76F", "#27AE60"],
+    ballTextColor: "#FFFFFF",
+    // A zesty lime highlight
+    highlightBallColor: "#B0FF5D",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#000000",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+  // --------------------------------------------
+  // 12) Bold Orange/Yellow
+  // --------------------------------------------
+  {
+    ballPalette: ["#FFA600", "#FFB733", "#FFB733"],
+    ballTextColor: "#FFFFFF",
+    // A softer lemon highlight
+    highlightBallColor: "#FFE066",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#333333",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+  // --------------------------------------------
+  // 13) Pastel Lavender
+  // --------------------------------------------
+  {
+    ballPalette: ["#CAB8FF", "#C5A3FF", "#CAB8FF"],
+    ballTextColor: "#4D4D4D",
+    // A subtle pink highlight
+    highlightBallColor: "#FFD9FF",
+    highlightBallTextColor: "#4D4D4D",
+    arrowBallColor: "#000000",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+  // --------------------------------------------
+  // 14) Neutral "Clay" Scheme
+  // --------------------------------------------
+  {
+    ballPalette: ["#DDD6CC", "#CFC6BA", "#AAA299"],
+    ballTextColor: "#333333",
+    // A soft pastel blue for contrast
+    highlightBallColor: "#A6E1FA",
+    highlightBallTextColor: "#333333",
+    arrowBallColor: "#666666",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+  // --------------------------------------------
+  // 15) Minimal Grey & Black
+  // --------------------------------------------
+  {
+    ballPalette: ["#4D4D4D", "#333333", "#666666"],
+    ballTextColor: "#EAEAEA",
+    // A bold red highlight
+    highlightBallColor: "#FF3030",
+    highlightBallTextColor: "#FFFFFF",
+    arrowBallColor: "#000000",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#121212"
+  },
+  // --------------------------------------------
+  // 16) Sunshine‐Yellow
+  // --------------------------------------------
+  {
+    ballPalette: ["#FEC300", "#FEC300", "#FED553"],
+    ballTextColor: "#FFFFFF",
+    // A hot orange highlight
+    highlightBallColor: "#FF6F00",
+    highlightBallTextColor: "#FFFFFF",
+    arrowBallColor: "#000000",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+  // --------------------------------------------
+  // 17) Teal / Sea‐Green
+  // --------------------------------------------
+  {
+    ballPalette: ["#2EC4B6", "#22B2A5", "#2EC4B6"],
+    ballTextColor: "#FFFFFF",
+    // A soft coral highlight
+    highlightBallColor: "#FFC1BB",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#00494D",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+  // --------------------------------------------
+  // 18) Cool Turquoise / Blue
+  // --------------------------------------------
+  {
+    ballPalette: ["#2DC2F4", "#48D4F7", "#2DC2F4"],
+    ballTextColor: "#FFFFFF",
+    // A golden‐orange accent
+    highlightBallColor: "#FFB43A",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#0F4C75",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFFFFF"
+  },
+
+  // --------------------------------------------
+  // 19) Cozy Cotton Candy
+  // --------------------------------------------
+  {
+    ballPalette: ["#FF9ED4", "#FFAED4", "#F79ED4"],
+    ballTextColor: "#4D4D4D",
+    // A slightly deeper pink to stand out
+    highlightBallColor: "#FF70B2",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#E76F51",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFD3EA"
+  },
+  // --------------------------------------------
+  // 20) Evening Ocean
+  // --------------------------------------------
+  {
+    ballPalette: ["#1B4965", "#1B4965", "#2E5984"],
+    ballTextColor: "#FAFAFA",
+    // A subtle coral highlight
+    highlightBallColor: "#F76F68",
+    highlightBallTextColor: "#FFFFFF",
+    arrowBallColor: "#0A2239",
+    arrowGlyphColor: "#FAFAFA",
+    physicsBackgroundColor: "#1B264F"
+  },
+  // --------------------------------------------
+  // 21) Soft Forest
+  // --------------------------------------------
+  {
+    ballPalette: ["#7C9473", "#8BB174", "#A7C957"],
+    ballTextColor: "#FFFFFF",
+    // A gentle springtime yellow
+    highlightBallColor: "#F4EEA9",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#5A6B50",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#CDE4BC"
+  },
+  // --------------------------------------------
+  // 22) Midnight Purple
+  // --------------------------------------------
+  {
+    ballPalette: ["#4C1F76", "#6E42A6", "#7F4EB3"],
+    ballTextColor: "#EDEDED",
+    // A bright electric teal for contrast
+    highlightBallColor: "#00FFC8",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#241138",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#2F164A"
+  },
+  // --------------------------------------------
+  // 23) Light Stone
+  // --------------------------------------------
+  {
+    ballPalette: ["#BDBDBD", "#A8A8A8", "#DADADA"],
+    ballTextColor: "#333333",
+    // A soft pastel green highlight
+    highlightBallColor: "#BAFFC9",
+    highlightBallTextColor: "#333333",
+    arrowBallColor: "#666666",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#F2F2F2"
+  },
+  // --------------------------------------------
+  // 24) Coral Dream
+  // --------------------------------------------
+  {
+    ballPalette: ["#FF6F59", "#FF8C76", "#FF6F59"],
+    ballTextColor: "#FFFFFF",
+    // A bright aqua highlight
+    highlightBallColor: "#50F3E2",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#7F1D1D",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FFEBE8"
+  },
+  // --------------------------------------------
+  // 25) Pastel Lavender
+  // --------------------------------------------
+  {
+    ballPalette: ["#CAB8FF", "#D5CBFF", "#BFA5FF"],
+    ballTextColor: "#444444",
+    // A minty green highlight
+    highlightBallColor: "#9DFFC8",
+    highlightBallTextColor: "#444444",
+    arrowBallColor: "#7A5CFA",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#EFEAFD"
+  },
+  // --------------------------------------------
+  // 26) Minty Fresh
+  // --------------------------------------------
+  {
+    ballPalette: ["#4DD2A5", "#3BBF9C", "#69D9B8"],
+    ballTextColor: "#FFFFFF",
+    // A lavender highlight for contrast
+    highlightBallColor: "#DAAFFB",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#1B9B7C",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#E6FFF5"
+  },
+  // --------------------------------------------
+  // 27) Bright Lemon
+  // --------------------------------------------
+  {
+    ballPalette: ["#FEEC74", "#FEED82", "#FEEC74"],
+    ballTextColor: "#4D4D4D",
+    // A complementary lavender highlight
+    highlightBallColor: "#D1B1FF",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#D1B10E",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#FEFFDA"
+  },
+  // --------------------------------------------
+  // 28) Slate Blue
+  // --------------------------------------------
+  {
+    ballPalette: ["#59618D", "#6E78A2", "#8088B8"],
+    ballTextColor: "#FFFFFF",
+    // A neon pink highlight
+    highlightBallColor: "#FF4FF4",
+    highlightBallTextColor: "#000000",
+    arrowBallColor: "#37415C",
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: "#697184"
+  }
+];
+
+let physicsSimBackgroundColor = [255]; // default value (as RGB)
+
+
+function applyColorScheme(scheme) {
+  // Update ball colors and text
+  ballColorPalette = scheme.ballPalette;
+  defaultTextFill = hexToRgb(scheme.ballTextColor);
+  
+  // Set the new highlight ball fill and text colors:
+  highlightBallFill = hexToRgb(scheme.highlightBallColor);
+  highlightTextFill = hexToRgb(scheme.highlightBallTextColor);
+  
+  // Update arrow and background colors:
+  arrowCircleColor = hexToRgb(scheme.arrowBallColor);
+  arrowGlyphColor = hexToRgb(scheme.arrowGlyphColor);
+  physicsSimBackgroundColor = hexToRgb(scheme.physicsBackgroundColor);
+  
+  // Update existing balls' colors:
+  for (let lb of desktopBalls) {
+    lb.ballColor = getRandomBallColor();
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // --------------------------------------------------------------------------
 // MOBILE MODE GLOBALS & STYLING VARIABLES
@@ -418,22 +878,52 @@ let backButton;
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function drawPanelWithShadow(x, y, w, h, cornerRadius, fillColor, shadowEnabled = true) {
+  if (shadowEnabled) {
+    // Set shadow properties
+    drawingContext.shadowOffsetX = shadowOffsetX * scaleFactor;
+    drawingContext.shadowOffsetY = shadowOffsetY * scaleFactor;
+    drawingContext.shadowBlur = shadowBlur * scaleFactor;
+    drawingContext.shadowColor = `rgba(${shadowColor[0]}, ${shadowColor[1]}, ${shadowColor[2]}, ${shadowColor[3]/255})`;
+  }
+  
+  // Draw the actual panel WITH shadow
+  noStroke();
+  fill(fillColor);
+  rect(x, y, w, h, cornerRadius * scaleFactor);
+  
+  if (shadowEnabled) {
+    // Reset shadow properties after drawing this panel
+    drawingContext.shadowOffsetX = 0;
+    drawingContext.shadowOffsetY = 0;
+    drawingContext.shadowBlur = 0;
+    drawingContext.shadowColor = 'rgba(0,0,0,0)';
+  }
+}
+
+
 // --------------------------------------------------------------------------
 // p5.js SETUP & DRAW
 // --------------------------------------------------------------------------
 function preload() {
   myFont = loadFont("Geist UltraLight.otf");
-  for (let i = 0; i < projectIndex.length; i++) {
-    let proj = projectIndex[i];
-    if (proj.media && proj.media.length > 0) {
-      for (let j = 0; j < proj.media.length; j++) {
-        let mediaItem = proj.media[j];
-        if (mediaItem.type === "image") {
-          mediaItem.img = loadImage(mediaItem.src);
-        }
-      }
-    }
-  }
 }
 
 function setup() {
@@ -699,6 +1189,8 @@ function showExpandedOverlay(index) {
 function updateNavigationControls(index) {
   const leftHalf = document.getElementById('leftHalf');
   const rightHalf = document.getElementById('rightHalf');
+  const leftCursor = document.getElementById('left-cursor');
+  const rightCursor = document.getElementById('right-cursor');
   
   if (!leftHalf || !rightHalf) return;
   
@@ -710,91 +1202,50 @@ function updateNavigationControls(index) {
   leftHalf.onclick = null;
   rightHalf.onclick = null;
   
-  // Get cursor elements
-  const leftCursor = document.getElementById('left-cursor');
-  const rightCursor = document.getElementById('right-cursor');
+  // Always navigate to the previous image when clicking on the left half
+  leftHalf.onmousemove = (e) => {
+    if (leftCursor) {
+      leftCursor.style.display = 'block';
+      leftCursor.style.left = e.clientX + 'px';
+      leftCursor.style.top = e.clientY + 'px';
+    }
+    if (rightCursor) rightCursor.style.display = 'none';
+  };
+  leftHalf.onmouseleave = () => {
+    if (leftCursor) leftCursor.style.display = 'none';
+  };
+  leftHalf.onclick = () => showPrevImage();
+  leftHalf.style.cursor = 'none';
   
-  // Set up left half (previous)
-  if (index > 0) {
-    // Update cursor on mouse movement
-    leftHalf.onmousemove = (e) => {
-      if (leftCursor) {
-        leftCursor.style.display = 'block';
-        leftCursor.style.left = e.clientX + 'px';
-        leftCursor.style.top = e.clientY + 'px';
-      }
-      // Hide right cursor if visible
-      if (rightCursor) rightCursor.style.display = 'none';
-    };
-    
-    leftHalf.onmouseleave = () => {
-      if (leftCursor) leftCursor.style.display = 'none';
-    };
-    
-    leftHalf.onclick = () => showPrevImage();
-    leftHalf.style.cursor = 'none'; // Hide default cursor
-  } else {
-    // First image - no previous
-    leftHalf.style.cursor = 'auto';
-  }
-  
-  // Set up right half (next)
-  if (index < expandedItems.length - 1) {
-    // Next image available
-    rightHalf.onmousemove = (e) => {
-      if (rightCursor) {
-        rightCursor.style.display = 'block';
-        rightCursor.style.left = e.clientX + 'px';
-        rightCursor.style.top = e.clientY + 'px';
-      }
-      // Hide left cursor if visible
-      if (leftCursor) leftCursor.style.display = 'none';
-    };
-    
-    rightHalf.onmouseleave = () => {
-      if (rightCursor) rightCursor.style.display = 'none';
-    };
-    
-    rightHalf.onclick = () => showNextImage();
-    rightHalf.style.cursor = 'none'; // Hide default cursor
-  } else if (index > 0) {
-    // Last image, but can go back
-    rightHalf.onmousemove = (e) => {
-      if (leftCursor) {
-        leftCursor.style.display = 'block';
-        leftCursor.style.left = e.clientX + 'px';
-        leftCursor.style.top = e.clientY + 'px';
-      }
-      // Hide right cursor if visible
-      if (rightCursor) rightCursor.style.display = 'none';
-    };
-    
-    rightHalf.onmouseleave = () => {
-      if (leftCursor) leftCursor.style.display = 'none';
-    };
-    
-    rightHalf.onclick = () => showPrevImage();
-    rightHalf.style.cursor = 'none';
-  } else {
-    // Only one image
-    rightHalf.style.cursor = 'auto';
-  }
+  // Always navigate to the next image when clicking on the right half
+  rightHalf.onmousemove = (e) => {
+    if (rightCursor) {
+      rightCursor.style.display = 'block';
+      rightCursor.style.left = e.clientX + 'px';
+      rightCursor.style.top = e.clientY + 'px';
+    }
+    if (leftCursor) leftCursor.style.display = 'none';
+  };
+  rightHalf.onmouseleave = () => {
+    if (rightCursor) rightCursor.style.display = 'none';
+  };
+  rightHalf.onclick = () => showNextImage();
+  rightHalf.style.cursor = 'none';
 }
-
 
 
 function showNextImage() {
-  if (currentExpandedIndex < expandedItems.length - 1) {
-    currentExpandedIndex++;
-    transitionExpandedImage(currentExpandedIndex, 'next');
-  }
+  if (expandedItems.length === 0) return;
+  // Increment index and wrap around using modulo
+  currentExpandedIndex = (currentExpandedIndex + 1) % expandedItems.length;
+  transitionExpandedImage(currentExpandedIndex, 'next');
 }
 
 function showPrevImage() {
-  if (currentExpandedIndex > 0) {
-    currentExpandedIndex--;
-    transitionExpandedImage(currentExpandedIndex, 'prev');
-  }
+  if (expandedItems.length === 0) return;
+  // Decrement index and wrap around (adding expandedItems.length before modulo ensures a positive result)
+  currentExpandedIndex = (currentExpandedIndex - 1 + expandedItems.length) % expandedItems.length;
+  transitionExpandedImage(currentExpandedIndex, 'prev');
 }
 
 function transitionExpandedImage(index, direction) {
@@ -1231,26 +1682,54 @@ function closeGallery() {
 
 function drawDesktop() {
   noStroke();
+  background(...backgroundColor);
   
-  push();
-  // Draw physics simulation background if in physics mode.
+  // Save the global state before anything else
+  drawingContext.save();
+  
+  // PANEL DRAWING SECTION
+  // Draw physics simulation background if in physics mode with shadow
   if (!galleryTransitionActive && leftPanelMode === "physics") {
-    push();
-    fill(254, 207, 0, physicsAlpha);
-    rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
-    pop();
+    drawPanelWithShadow(
+      leftPanelX, 
+      leftPanelY, 
+      leftPanelW, 
+      leftPanelH, 
+      panelCornerRadius, 
+      color(...physicsSimBackgroundColor, physicsAlpha)
+    );
   }
+      
+  // Draw right panel with shadow (always)
+  drawPanelWithShadow(
+    rightPanelX, 
+    rightPanelY, 
+    rightPanelW, 
+    rightPanelH, 
+    panelCornerRadius, 
+    color(255)
+  );
   
-  pop();
+  // Reset and restore context after panel drawing
+  drawingContext.shadowOffsetX = 0;
+  drawingContext.shadowOffsetY = 0;
+  drawingContext.shadowBlur = 0;
+  drawingContext.shadowColor = 'rgba(0,0,0,0)';
+  drawingContext.restore();
   
-  // Draw right panel (description panel on canvas)
-  fill(255);
-  rect(rightPanelX, rightPanelY, rightPanelW, rightPanelH);
+  // COMPLETELY NEW CONTEXT FOR PROJECT INDEX
+  drawingContext.save();
+  drawProjectIndex();
+  drawingContext.restore();
   
+  // COMPLETELY NEW CONTEXT FOR PHYSICS
   if (leftPanelMode === "physics") {
+    drawingContext.save();
+    
     Engine.update(desktopEngine);
     updateGhostBallDesktop();
     updateGhostBallScaleDesktop();
+    
     let fadeBallsAlpha = 1;
     if (isFadingBalls) {
       let nowSec = millis() / 1000;
@@ -1271,41 +1750,81 @@ function drawDesktop() {
         fadeBallsAlpha = 1 - t;
       }
     }
+    
+    let arrowPos = centerArrowBall.body.position;
+    if (!centerArrowBall.isClicked) {
+      let d = dist(mouseX, mouseY, arrowPos.x, arrowPos.y);
+      if (d <= centerArrowBall.r) {
+        // Mouse is over the arrow ball: grow it a bit
+        if (centerArrowBall.scale !== 1.1) {
+          anime({
+            targets: centerArrowBall,
+            scale: 1.05,
+            duration: 100,
+            easing: 'easeOutQuint'
+          });
+        }
+      } else {
+        // Mouse not over: revert to normal size
+        if (centerArrowBall.scale !== 1) {
+          anime({
+            targets: centerArrowBall,
+            scale: 1,
+            duration: 100,
+            easing: 'easeOutQuint'
+          });
+        }
+      }
+    }
+      
+    // Continue updating angle and drawing arrow ball
+    centerArrowBall.updateAngle(arrowEaseDuration);
+    centerArrowBall.show();
+  
+
+    // Draw all balls with clean context
     for (let lb of desktopBalls) {
       lb.show(fadeBallsAlpha);
     }
-    centerArrowBall.updateAngle(arrowEaseDuration);
-    centerArrowBall.show();
+    
     drawPreviewBallDesktop();
     updateLetterFadeDesktop();
     drawPhraseDesktop();
+    
+    // Draw center arrow ball last, with its own context management
+    centerArrowBall.updateAngle(arrowEaseDuration);
+    centerArrowBall.show();
+    
+    drawingContext.restore();
   }
   
-  // Draw the project index on canvas.
-  drawProjectIndex();
-  
-  // NEW: If a project is open (HTML gallery mode), cover the left panel.
+  // GALLERY MODE COVER - CLEAN CONTEXT
   if (leftPanelMode === "htmlGallery") {
-    updateScroll();  // Add this line
+    drawingContext.save();
+    updateScroll();
 
     push();
     noStroke();
-    // Draw a rectangle in the background color with an alpha that fades in.
+    // Draw a rectangle with the same rounded corners as the panels
     fill(backgroundColor[0], physicsCoverAlpha);
-    rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
+    rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH, panelCornerRadius * scaleFactor);
     pop();
+    
+    drawingContext.restore();
   }
 }
+
+
 
 //
 // NEW: HTML Gallery Loader using Anime.js
 
 function loadProjectHTML(project) {
   htmlGallery.style('pointer-events', 'auto');
-  
+
   // First, reset scroll variables but don't apply them yet
   const newTargetScrollY = window.innerHeight * 3;
-  
+
   anime({
     targets: htmlGallery.elt,
     opacity: 0,
@@ -1315,8 +1834,8 @@ function loadProjectHTML(project) {
     complete: function() {
       // Reset position before content change (while invisible)
       htmlGallery.elt.style.transform = 'translateY(-20px)';
-      
-      // Build content
+
+      // Build content dynamically. Note that we rely on the browser's native lazy-loading for images.
       let content = '';
       project.media.forEach((item) => {
         if (item.type === "image") {
@@ -1358,15 +1877,15 @@ function loadProjectHTML(project) {
             ></video>`;
         }
       });
-      
+
       // Update content and scroll position while opacity is 0
       document.getElementById('galleryContent').innerHTML = content;
       targetScrollY = newTargetScrollY;
       currentScrollY = newTargetScrollY;
       scrollVelocity = 0;
       htmlGallery.elt.scrollTop = newTargetScrollY;
-      
-      // Add hover effects after content is in DOM
+
+      // Add click handlers for expanded view after the content is in the DOM
       const items = document.getElementsByClassName('gallery-item');
       expandedItems = Array.from(items);
       expandedItems.forEach((item, index) => {
@@ -1374,10 +1893,10 @@ function loadProjectHTML(project) {
           openExpandedView(index);
         });
       });
-            
+
       let currentHoveredItem = null;
-    
-      // Function to update all items based on current hovered item
+
+      // Function to update all items based on the currently hovered item
       const updateItemStates = (hoveredItem) => {
         Array.from(items).forEach(item => {
           if (item === hoveredItem) {
@@ -1401,14 +1920,14 @@ function loadProjectHTML(project) {
           }
         });
       };
-      
-      // Add mouse enter/leave handlers to each item
+
+      // Add mouse enter/leave handlers to each gallery item
       Array.from(items).forEach(item => {
         item.addEventListener('mouseenter', () => {
           currentHoveredItem = item;
           updateItemStates(item);
         });
-        
+
         item.addEventListener('mouseleave', () => {
           // Only reset if we're leaving the currently hovered item
           if (item === currentHoveredItem) {
@@ -1429,7 +1948,7 @@ function loadProjectHTML(project) {
           }
         });
       });
-      
+
       // Also add a mouse leave handler to the entire gallery container
       document.getElementById('galleryContent').addEventListener('mouseleave', () => {
         currentHoveredItem = null;
@@ -1442,7 +1961,7 @@ function loadProjectHTML(project) {
           easing: 'easeInOutQuint'
         });
       });
-      
+
       // Fade back in with upward movement
       anime({
         targets: htmlGallery.elt,
@@ -1453,7 +1972,7 @@ function loadProjectHTML(project) {
         easing: 'cubicBezier(0,0,0,1)',
       });
 
-      // Update description
+      // Update project description
       anime({
         targets: htmlDescription.elt,
         opacity: 0,
@@ -1471,7 +1990,7 @@ function loadProjectHTML(project) {
         }
       });
 
-      // Animate the physics cover
+      // Animate the physics cover to fade in
       let coverObj = { alpha: physicsCoverAlpha };
       anime({
         targets: coverObj,
@@ -1482,7 +2001,7 @@ function loadProjectHTML(project) {
           physicsCoverAlpha = coverObj.alpha;
         }
       });
-            
+
       // Show the back button with a slight delay
       setTimeout(() => {
         if (!backButton) {
@@ -1490,14 +2009,49 @@ function loadProjectHTML(project) {
         }
         showBackButton();
       }, 400);
-          }
+    }
   });
 }
 
 
 
 
-  function mousePressed() {
+function mousePressed() {
+  // Check if the arrow ball was clicked.
+  let arrowPos = centerArrowBall.body.position;
+  if (dist(mouseX, mouseY, arrowPos.x, arrowPos.y) <= centerArrowBall.r) {
+    centerArrowBall.isClicked = true;  // Disable hover animations during click
+    // Animate a shrink to simulate a click
+    anime({
+      targets: centerArrowBall,
+      scale: 0.95,
+      duration: 100,
+      easing: 'easeOutQuint',
+      complete: function() {
+        // After the click, determine the target scale based on hover:
+        let d = dist(mouseX, mouseY, arrowPos.x, arrowPos.y);
+        let targetScale = (d <= centerArrowBall.r) ? 1.1 : 1;
+        anime({
+          targets: centerArrowBall,
+          scale: targetScale,
+          duration: 100,
+          easing: 'easeOutQuint',
+          complete: function() {
+            centerArrowBall.isClicked = false;  // Re-enable hover animations
+          }
+        });
+      }
+    });
+    
+    // Also, pick and apply a random color scheme as before:
+    let randomIndex = Math.floor(random(0, colorSchemes.length));
+    let chosenScheme = colorSchemes[randomIndex];
+    applyColorScheme(chosenScheme);
+    console.log("Applied new color scheme:", chosenScheme);
+    return; // Skip further mouse interactions
+  }
+  
+        
     // Check if a project index item was clicked.
     let a = textAscent();
     let d = textDescent();
@@ -1623,26 +2177,50 @@ function drawPreviewBallDesktop() {
 }
 
 function updateLayout() {
+  // Calculate the basic scale factor from your original reference dimensions.
   scaleFactor = min(windowWidth / refW, windowHeight / refH);
-  containerW = refW * scaleFactor;
-  containerH = refH * scaleFactor;
+
+  // Define an expansion factor for the panels.
+  let panelExpansion = 1.2;
+  
+  // Compute the new (expanded) panel dimensions based on the reference sizes.
+  let expandedLeftPanelW = leftPanelRefW * panelExpansion;
+  let expandedLeftPanelH = leftPanelRefH * panelExpansion;
+  let expandedRightPanelW = rightPanelRefW * panelExpansion;
+  let expandedRightPanelH = rightPanelRefH * panelExpansion;
+  
+  // Recalculate the container dimensions so that the layout remains centered.
+  // The container width is determined by: left margin + left panel + gap + right panel + right margin.
+  containerW = (marginLeftRightRef * 2 + expandedLeftPanelW + gapRef + expandedRightPanelW) * scaleFactor;
+  
+  // For height, we use the vertical margins plus the maximum of the two panel heights.
+  containerH = (marginTopBottomRef * 2 + max(expandedLeftPanelH, expandedRightPanelH)) * scaleFactor;
+  
+  // Center the container in the window.
   containerX = (windowWidth - containerW) / 2;
   containerY = (windowHeight - containerH) / 2;
+  
+  // Position the left panel.
   leftPanelX = containerX + marginLeftRightRef * scaleFactor;
   leftPanelY = containerY + marginTopBottomRef * scaleFactor;
-  leftPanelW = leftPanelRefW * scaleFactor;
-  leftPanelH = leftPanelRefH * scaleFactor;
+  leftPanelW = expandedLeftPanelW * scaleFactor;
+  leftPanelH = expandedLeftPanelH * scaleFactor;
+  
+  // Position the right panel next to the left panel (with the gap in between).
   rightPanelX = leftPanelX + leftPanelW + gapRef * scaleFactor;
   rightPanelY = containerY + marginTopBottomRef * scaleFactor;
-  rightPanelW = rightPanelRefW * scaleFactor;
-  rightPanelH = rightPanelRefH * scaleFactor;
+  rightPanelW = expandedRightPanelW * scaleFactor;
+  rightPanelH = expandedRightPanelH * scaleFactor;
+  
+  // Adjust padding and the position of the phrase inside the right panel.
   phrasePadding = 20 * scaleFactor;
   phraseX = rightPanelX + phrasePadding;
   phraseY = rightPanelY + phrasePadding;
+  
+  // Recalculate the center of the left panel.
   leftPanelCenterX = leftPanelX + leftPanelW / 2;
   leftPanelCenterY = leftPanelY + leftPanelH / 2;
 }
-
 function createRectWalls(cx, cy, w, h) {
   let group = Composite.create();
   let thick = 100 * scaleFactor;
@@ -1834,7 +2412,7 @@ class LetterBall {
 
     let ballFill = isHighlight ? highlightBallFill : this.ballColor;
     let textFill = isHighlight ? highlightTextFill : defaultTextFill;
-
+    
     push();
     translate(pos.x, pos.y);
     rotate(angle);
@@ -1859,16 +2437,60 @@ class LetterBall {
 }
 
 class CenterArrowBall {
-  constructor(x, y, r) {
-    this.r = r;
-    this.body = Bodies.circle(x, y, r, { isStatic: true, restitution: 2 });
-    this.currentAngle = 0;
-    this.arrowState = "TRACKING_MOUSE";
-    this.target = "mouse";
-    this.easingStartTime = 0;
-    this.easeFromAngle = 0;
-  }
-  setTargetBall(letterBall) {
+
+
+// Add this to your CenterArrowBall class
+show() {
+  let pos = this.body.position;
+  
+  // Create a separate canvas context just for this arrow ball
+  drawingContext.save();
+  
+  // Completely reset ALL drawing parameters to defaults
+  drawingContext.shadowOffsetX = 0;
+  drawingContext.shadowOffsetY = 0;
+  drawingContext.shadowBlur = 0;
+  drawingContext.shadowColor = 'rgba(0,0,0,0)';
+  drawingContext.globalAlpha = 1.0;
+  drawingContext.globalCompositeOperation = 'source-over';
+  
+  // Draw arrow ball with pristine context
+  push();
+  translate(pos.x, pos.y);
+  rotate(this.currentAngle);
+  noStroke();
+  fill(...arrowCircleColor);
+  ellipse(0, 0, this.r * 2);
+  fill(...arrowGlyphColor);
+  let arrowGlyph = "→";
+  textSize(this.r);
+  let w = textWidth(arrowGlyph);
+  let a = textAscent();
+  let d = textDescent();
+  textAlign(LEFT, BASELINE);
+  text(arrowGlyph, -w / 2, (a - d) / 2);
+  pop();
+  
+  // Restore the original context
+  drawingContext.restore();
+}
+
+
+
+constructor(x, y, r) {
+  this.r = r;
+  this.body = Bodies.circle(x, y, r, { isStatic: true, restitution: 2 });
+  this.currentAngle = 0;
+  this.arrowState = "TRACKING_MOUSE";
+  this.target = "mouse";
+  this.easingStartTime = 0;
+  this.easeFromAngle = 0;
+  this.scale = 1; // Scale property for animations
+  this.isClicked = false; // NEW flag to disable hover while clicked
+}
+
+
+setTargetBall(letterBall) {
     this.target = letterBall;
     this.startEasing();
   }
@@ -1908,6 +2530,19 @@ class CenterArrowBall {
     push();
     translate(pos.x, pos.y);
     rotate(this.currentAngle);
+    scale(this.scale);  // NEW: Apply scale factor to the entire arrow ball
+
+    // Explicitly disable shadows for this object
+    if (drawingContext.shadowColor !== 'rgba(0,0,0,0)' || 
+        drawingContext.shadowBlur !== 0 || 
+        drawingContext.shadowOffsetX !== 0 || 
+        drawingContext.shadowOffsetY !== 0) {
+      drawingContext.shadowOffsetX = 0;
+      drawingContext.shadowOffsetY = 0;
+      drawingContext.shadowBlur = 0;
+      drawingContext.shadowColor = 'rgba(0,0,0,0)';
+    }
+    
     noStroke();
     fill(...arrowCircleColor);
     ellipse(0, 0, this.r * 2);
@@ -1921,7 +2556,7 @@ class CenterArrowBall {
     text(arrowGlyph, -w / 2, (a - d) / 2);
     pop();
   }
-}
+  }
 
 // ===========================================================================
 // MOBILE MODE FUNCTIONS
