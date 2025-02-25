@@ -1823,30 +1823,37 @@ class LetterBall {
     this.letter = letter;
     this.r = r;
     this.phraseIdx = phraseIdx;
-    this.ballColor = getRandomBallColor(); // Add random color
+    this.ballColor = getRandomBallColor();
   }
   
   show(fadeAlpha = 1) {
     let pos = this.body.position;
     let angle = this.body.angle;
     let isHighlight = highlightIndices.includes(this.phraseIdx);
-    
-    // Use the stored random color for non-highlighted balls
+
     let ballFill = isHighlight ? highlightBallFill : this.ballColor;
     let textFill = isHighlight ? highlightTextFill : defaultTextFill;
-    
+
     push();
     translate(pos.x, pos.y);
     rotate(angle);
     noStroke();
     fill(...ballFill, 255 * fadeAlpha);
     ellipse(0, 0, this.r * 2);
+
+    // --- OLD (removes random letter size) ---
+    // textSize(this.r * 0.8);
+
+    // --- NEW: Fix text size so all letters remain the same ---
+    // For example, pick 20 * scaleFactor (adjust to taste)
+    textSize(18 * scaleFactor);
+
     fill(...textFill, 255 * fadeAlpha);
-    textSize(this.r * 0.8);
     let w = textWidth(this.letter);
     let a = textAscent();
     let d = textDescent();
     textAlign(LEFT, BASELINE);
+    // Center horizontally and vertically
     text(this.letter, -w / 2, (a - d) / 2);
     pop();
   }
