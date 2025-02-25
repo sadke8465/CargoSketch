@@ -1559,15 +1559,16 @@ function startFadingBallsDesktop() {
 }
 
 function createLetterBallDesktop(x, y, letter) {
-  let r = random(18, 30) * scaleFactor;
+  let visualR = random(18, 30) * scaleFactor;
+  let physicsPadding = 2; // or however many extra pixels you want
   let options = {
     friction: physicsConfigDesktop.friction,
     frictionAir: physicsConfigDesktop.airDrag,
     density: physicsConfigDesktop.density,
     restitution: physicsConfigDesktop.restitution
   };
-  let body = Bodies.circle(x, y, r, options);
-  let lb = new LetterBall(body, letter, phraseIndex, r);
+  let body = Bodies.circle(x, y, visualR + physicsPadding, options);
+  let lb = new LetterBall(body, letter, phraseIndex, visualR);
   desktopBalls.push(lb);
   World.add(desktopWorld, body);
   ballInitialVelocityAngle = random(ballInitialVelocityAngleMIN, ballInitialVelocityAngleMAX);
@@ -1818,14 +1819,14 @@ function updateLetterFadeDesktop() {
 }
 
 class LetterBall {
-  constructor(body, letter, phraseIdx, r) {
+  constructor(body, letter, phraseIdx, visualR) {
     this.body = body;
     this.letter = letter;
-    this.r = r;
+    this.r = visualR; // used only for drawing
     this.phraseIdx = phraseIdx;
     this.ballColor = getRandomBallColor();
   }
-  
+
   show(fadeAlpha = 1) {
     let pos = this.body.position;
     let angle = this.body.angle;
@@ -1837,23 +1838,21 @@ class LetterBall {
     push();
     translate(pos.x, pos.y);
     rotate(angle);
+
+    // No stroke, so the padding is truly invisible:
     noStroke();
     fill(...ballFill, 255 * fadeAlpha);
+
+    // Draw only "this.r" — the smaller radius
     ellipse(0, 0, this.r * 2);
 
-    // --- OLD (removes random letter size) ---
-    // textSize(this.r * 0.8);
-
-    // --- NEW: Fix text size so all letters remain the same ---
-    // For example, pick 20 * scaleFactor (adjust to taste)
-    textSize(18 * scaleFactor);
-
+    // Draw letter at a fixed text size (or scaled if you wish):
     fill(...textFill, 255 * fadeAlpha);
+    textSize(20 * scaleFactor); 
     let w = textWidth(this.letter);
     let a = textAscent();
     let d = textDescent();
     textAlign(LEFT, BASELINE);
-    // Center horizontally and vertically
     text(this.letter, -w / 2, (a - d) / 2);
     pop();
   }
