@@ -202,10 +202,22 @@ let projectIndex = [
     url: "project2.html",
     glyph: "    ②  ",
     tags: ["Motion Design", "Generative", "Touchdesigner"],
-    description: "Final Work at Shenkar: A Book on Books<br>This project marks the culmination of my academic journey at Shenkar, where I delved deep into the evolution of book design and the printed word.<br>It involved extensive archival research, unearthing historical treasures and reinterpreting classic design principles to forge a new visual narrative.<br>The work merges modern typography with traditional printing techniques, creating a unique dialogue between past and present.<br>Each page is crafted to challenge conventional layouts, inviting the reader to explore the intricate relationship between form and content.<br>Ultimately, this project is a celebration of literary culture, blending art, history, and technology to redefine the boundaries of book-making.",
+    description: "The book presents a structured exploration of connections between books in a private library. It is divided into three sections: one comparing groups of books, another documenting bookmarks found inside them, and a third focusing on sticky notes with their transcriptions and analysis. <br><br>The design is minimal, using a monochromatic palette, clean typography, and structured layouts. Each element is presented without excess decoration, emphasizing organization and clarity. The content is arranged systematically, allowing relationships between books, bookmarks, and notes to emerge without added interpretation.",
     media: [
 { type: "image", src: "PAGMAR_29_Full.png" },
 { type: "video", src: "Wix_Sukot_WIP3.mp4" },
+{ type: "image", src: "PAGMAR_1_Full.png" },
+{ type: "image", src: "PAGMAR_2_Full.png" },
+{ type: "image", src: "PAGMAR_3_Full.png" },
+{ type: "image", src: "PAGMAR_4_Full.png" },
+{ type: "image", src: "PAGMAR_5_Full.png" },
+{ type: "image", src: "PAGMAR_6_Full.png" },
+{ type: "image", src: "PAGMAR_7_Full.png" },
+{ type: "image", src: "PAGMAR_8_Full.png" },
+{ type: "image", src: "PAGMAR_9_Full.png" },
+{ type: "image", src: "PAGMAR_9_Thumb.png" },
+{ type: "image", src: "PAGMAR_10_Full.png" },
+{ type: "image", src: "PAGMAR_10_Thumb.png" },
 
     ]
   },
@@ -384,6 +396,8 @@ htmlGallery.id('htmlGallery');
 htmlGallery.style('scrollbar-width', 'none'); // Firefox
 htmlGallery.style('-ms-overflow-style', 'none'); // IE/Edge
 htmlGallery.style('&::-webkit-scrollbar', 'display: none'); // Chrome/Safari
+htmlGallery.style('-webkit-overflow-scrolling', 'touch'); // Smooth scrolling for Safari
+
 
 htmlGallery.style('position', 'fixed');
 htmlGallery.style('top', '0');
