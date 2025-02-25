@@ -1,6 +1,29 @@
 // --------------------------------------------------------------------------
 // HELPER FUNCTIONS & GLOBAL DETECTION
 // --------------------------------------------------------------------------
+
+
+function hexToRgb(hex) {
+  // Remove the # if it exists
+  hex = hex.replace('#', '');
+  
+  // Parse the hex values
+  let r = parseInt(hex.substring(0, 2), 16);
+  let g = parseInt(hex.substring(2, 4), 16);
+  let b = parseInt(hex.substring(4, 6), 16);
+  
+  return [r, g, b];
+}
+
+
+
+function getRandomBallColor() {
+  let randomIndex = Math.floor(random(0, ballColorPalette.length));
+  return hexToRgb(ballColorPalette[randomIndex]);
+}
+
+
+
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   updateLayout();  // This updates all your panel positions and dimensions
@@ -152,6 +175,28 @@ let activeProject = null;       // The project that is currently active
 let projectGalleryImages = [];  // Array of gallery media items (each with type, src, etc.)
 let scrollOffset = 0;           // Vertical scroll offset for the gallery
 
+
+
+
+
+
+
+
+let ballColorPalette = [
+  "#FF7D01",
+
+];
+
+
+
+
+
+
+
+
+
+
+
 // New globals for project description overlay:
 let projectDescriptionFadeStartTime = 0;  // time in seconds when fade started
 let projectDescriptionFadeDuration = 1.0;   // Fade duration in seconds
@@ -204,20 +249,20 @@ let projectIndex = [
     tags: ["Motion Design", "Generative", "Touchdesigner"],
     description: "The book presents a structured exploration of connections between books in a private library. It is divided into three sections: one comparing groups of books, another documenting bookmarks found inside them, and a third focusing on sticky notes with their transcriptions and analysis. <br><br>The design is minimal, using a monochromatic palette, clean typography, and structured layouts. Each element is presented without excess decoration, emphasizing organization and clarity. The content is arranged systematically, allowing relationships between books, bookmarks, and notes to emerge without added interpretation.",
     media: [
-{ type: "image", src: "PAGMAR_29_Full.png" },
-{ type: "video", src: "Wix_Sukot_WIP3.mp4" },
-{ type: "image", src: "PAGMAR_1_Full.png" },
-{ type: "image", src: "PAGMAR_2_Full.png" },
-{ type: "image", src: "PAGMAR_3_Full.png" },
-{ type: "image", src: "PAGMAR_4_Full.png" },
-{ type: "image", src: "PAGMAR_5_Full.png" },
-{ type: "image", src: "PAGMAR_6_Full.png" },
-{ type: "image", src: "PAGMAR_7_Full.png" },
-{ type: "image", src: "PAGMAR_8_Full.png" },
-{ type: "image", src: "PAGMAR_9_Full.png" },
-{ type: "image", src: "PAGMAR_9_Thumb.png" },
-{ type: "image", src: "PAGMAR_10_Full.png" },
-{ type: "image", src: "PAGMAR_10_Thumb.png" },
+      { type: "image", src: "PAGMAR_29_Full.png" },
+      { type: "video", src: "Wix_Sukot_WIP3.mp4" },
+      { type: "image", src: "PAGMAR_1_Full.png" },
+      { type: "image", src: "PAGMAR_2_Full.png" },
+      { type: "image", src: "PAGMAR_3_Full.png" },
+      { type: "image", src: "PAGMAR_4_Full.png" },
+      { type: "image", src: "PAGMAR_5_Full.png" },
+      { type: "image", src: "PAGMAR_6_Full.png" },
+      { type: "image", src: "PAGMAR_7_Full.png" },
+      { type: "image", src: "PAGMAR_8_Full.png" },
+      { type: "image", src: "PAGMAR_9_Full.png" },
+      { type: "image", src: "PAGMAR_9_Thumb.png" },
+      { type: "image", src: "PAGMAR_10_Full.png" },
+      { type: "image", src: "PAGMAR_10_Thumb.png" },
 
     ]
   },
@@ -289,12 +334,12 @@ let fadeBallsDuration = 0.1;
 // Desktop colors and physics configuration
 let backgroundColor = [35];
 let phraseTextColor = [0];
-let highlightBallFill = [70, 200, 70];
-let highlightTextFill = [255];
+let highlightBallFill = [255];
+let highlightTextFill = [35];
 let defaultBallFill = [255];
 let defaultTextFill = [35];
-let arrowCircleColor = [35];
-let arrowGlyphColor = [255];
+let arrowCircleColor = [255];
+let arrowGlyphColor = [35];
 let ghostBallFill = [127, 50];
 let ghostTextFill = [0, 50];
 let interactiveOutlineColor = [170];
@@ -324,8 +369,8 @@ let enableMotionBallColor = [255];
 let enableMotionTextColor = [0];    
 let enableMotionText = "Enable Motion";
 
-let enableMotionBackgroundColor = [80];
-let regularBackgroundColor = [80];
+let enableMotionBackgroundColor = [35];
+let regularBackgroundColor = [255];
 
 let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
@@ -1166,7 +1211,7 @@ function drawDesktop() {
   // Draw physics simulation background if in physics mode.
   if (!galleryTransitionActive && leftPanelMode === "physics") {
     push();
-    fill(255, 255, 0, physicsAlpha);
+    fill(254, 207, 0, physicsAlpha);
     rect(leftPanelX, leftPanelY, leftPanelW, leftPanelH);
     pop();
   }
@@ -1753,13 +1798,18 @@ class LetterBall {
     this.letter = letter;
     this.r = r;
     this.phraseIdx = phraseIdx;
+    this.ballColor = getRandomBallColor(); // Add random color
   }
+  
   show(fadeAlpha = 1) {
     let pos = this.body.position;
     let angle = this.body.angle;
     let isHighlight = highlightIndices.includes(this.phraseIdx);
-    let ballFill = isHighlight ? highlightBallFill : defaultBallFill;
+    
+    // Use the stored random color for non-highlighted balls
+    let ballFill = isHighlight ? highlightBallFill : this.ballColor;
     let textFill = isHighlight ? highlightTextFill : defaultTextFill;
+    
     push();
     translate(pos.x, pos.y);
     rotate(angle);
@@ -2057,16 +2107,22 @@ class MobileLetterBall {
     this.body = body;
     this.letter = letter;
     this.r = r;
+    this.ballColor = getRandomBallColor(); // Add random color
   }
+  
   show() {
     let pos = this.body.position;
     let angle = this.body.angle;
     push();
     translate(pos.x, pos.y);
     rotate(angle);
-    fill(...letterBallColor);
+    
+    // Use the random ball color instead of letterBallColor
+    fill(...this.ballColor);
     noStroke();
     ellipse(0, 0, this.r * 2);
+    
+    // Keep the text color contrast high for readability
     fill(...letterBallTextColor);
     textAlign(CENTER, CENTER);
     textSize(letterBallTextSize);
