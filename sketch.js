@@ -347,6 +347,7 @@ description: "Generative branding for Shenkar’s graduate exhibition. <br><br>O
   }
 ];
 
+
 let wallComposite;
 let centerArrowBall;
 let previewBody;
@@ -366,15 +367,24 @@ let fadeInDuration = 0.15;
 let phraseIndex = 0;
 
 // Layout references
-const refW = 1728;
-const refH = 1117;
-const leftPanelRefW = 500;
-const leftPanelRefH = 770;
-const rightPanelRefW = 770;
-const rightPanelRefH = 770;
-const gapRef = 32;
-const marginLeftRightRef = 213;
-const marginTopBottomRef = 174;
+// EXACT reference layout you want to preserve:
+const refW = 1657;           // total reference width
+const refH = 1024;           // total reference height
+
+// Left panel: 612 x 951
+const leftPanelRefW = 612;
+const leftPanelRefH = 951;
+
+// Right panel: 944 x 951
+const rightPanelRefW = 944;
+const rightPanelRefH = 951;
+
+// Gap of 27px between left/right panels
+const gapRef = 27;
+
+// 36px margins on each side (left/right) and top/bottom
+const marginLeftRightRef = 36;
+const marginTopBottomRef = 36;
 let scaleFactor, containerW, containerH, containerX, containerY;
 let leftPanelX, leftPanelY, leftPanelW, leftPanelH;
 let rightPanelX, rightPanelY, rightPanelW, rightPanelH;
@@ -394,7 +404,7 @@ let fadeBallsStartTime = 1.5;
 let fadeBallsDuration = 0.1;
 
 // Desktop colors and physics configuration
-let backgroundColor = [251, 251, 253];
+let backgroundColor = [40];
 let phraseTextColor = [0];
 let highlightBallFill = [35];
 let highlightTextFill = [255];
@@ -422,383 +432,30 @@ let arrowEaseDuration = 0.5;
 
 
 
-
-
-
-
-
-
-
-
-
 let colorSchemes = [
   // --------------------------------------------
   // 1) Blueberry Lime
   // --------------------------------------------
   {
-    ballPalette: ["#4C4FE3", "#00B761", "#00B761"],
-    ballTextColor: "#FFFFFF",
+    ballPalette: ["#FFFFFF"],
+    ballTextColor: "#292929",
     // A bright chartreuse highlight that fits with the lime
-    highlightBallColor: "#CCFF1A",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#3240A8",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#AAFFE0"
-  },
-  // --------------------------------------------
-  // 2) Vibrant Magenta
-  // --------------------------------------------
-  {
-    ballPalette: ["#C2185B", "#E91E63", "#AD1457"],
-    ballTextColor: "#FAFAFA",
-    // A bright aqua/teal highlight for contrast
-    highlightBallColor: "#00E5FF",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#6A1B9A",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FCE4EC"
-  },
-  // --------------------------------------------
-  // 3) Coffee & Cream
-  // --------------------------------------------
-  {
-    ballPalette: ["#6F4E37", "#8B6B51", "#997870"],
-    ballTextColor: "#FFFFFF",
-    // A soft sky-blue accent
-    highlightBallColor: "#B5EAEA",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#2E1C0E",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#F7EFE7"
-  },
-  // --------------------------------------------
-  // 4) Urban Sky
-  // --------------------------------------------
-  {
-    ballPalette: ["#30475E", "#1E272E", "#3E5C7F"],
-    ballTextColor: "#FFFFFF",
-    // A golden tone that stands out from the blues/grays
-    highlightBallColor: "#F9C74F",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#222831",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#DCE3ED"
-  },
-  // --------------------------------------------
-  // 5) Retro Brown
-  // --------------------------------------------
-  {
-    ballPalette: ["#D19A66", "#E6B89C", "#EEE5DC"],
-    ballTextColor: "#4B2E2E",
-    // A warm golden accent
-    highlightBallColor: "#F2C66E",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#9C6644",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#F4ECE4"
-  },
-  // --------------------------------------------
-  // 6) Crisp Redwood
-  // --------------------------------------------
-  {
-    ballPalette: ["#B23A48", "#DB5461", "#ED6A5A"],
-    ballTextColor: "#FFFFFF",
-    // A bright green to offset all the reds
-    highlightBallColor: "#98E39E",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#7A1B2B",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#F4E1DE"
-  },
-  // --------------------------------------------
-  // 7) Tropical Sunrise
-  // --------------------------------------------
-  {
-    ballPalette: ["#FF9770", "#FFD07F", "#FF9770"],
-    ballTextColor: "#402306",
-    // A pale yellow highlight
-    highlightBallColor: "#FFF7B0",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#F4511E",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFF3E2"
-  },
-  // --------------------------------------------
-  // 8) Desert Mirage
-  // --------------------------------------------
-  {
-    ballPalette: ["#CBAE66", "#D4C8A0", "#BAA378"],
-    ballTextColor: "#2E1D04",
-    // A soft green for balance
-    highlightBallColor: "#B8E1B8",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#8C7A4F",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#F2E6D4"
-  },
-  // --------------------------------------------
-  // 9) Dreamy Orchard
-  // --------------------------------------------
-  {
-    ballPalette: ["#C7D9B7", "#E4D0F7", "#F5C7F7"],
-    ballTextColor: "#4A4453",
-    // A gentle aqua accent
-    highlightBallColor: "#B8EEE7",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#9779B0",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FDFDFE"
-  },
-  // --------------------------------------------
-  // 10) Royal Indigo
-  // --------------------------------------------
-  {
-    ballPalette: ["#4B0082", "#5F1E90", "#6F37A9"],
-    ballTextColor: "#F0ECE9",
-    // A golden accent to pop against indigo
-    highlightBallColor: "#FFD13F",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#2E0B3E",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#E1D7EC"
-  },
-
-  // --------------------------------------------
-  // 11) Bright Green Scheme
-  // --------------------------------------------
-  {
-    ballPalette: ["#2EC76F", "#2EC76F", "#2EC76F", "#27AE60"],
-    ballTextColor: "#FFFFFF",
-    // A zesty lime highlight
-    highlightBallColor: "#B0FF5D",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#000000",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-  // --------------------------------------------
-  // 12) Bold Orange/Yellow
-  // --------------------------------------------
-  {
-    ballPalette: ["#FFA600", "#FFB733", "#FFB733"],
-    ballTextColor: "#FFFFFF",
-    // A softer lemon highlight
-    highlightBallColor: "#FFE066",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#333333",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-  // --------------------------------------------
-  // 13) Pastel Lavender
-  // --------------------------------------------
-  {
-    ballPalette: ["#CAB8FF", "#C5A3FF", "#CAB8FF"],
-    ballTextColor: "#4D4D4D",
-    // A subtle pink highlight
-    highlightBallColor: "#FFD9FF",
-    highlightBallTextColor: "#4D4D4D",
-    arrowBallColor: "#000000",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-  // --------------------------------------------
-  // 14) Neutral "Clay" Scheme
-  // --------------------------------------------
-  {
-    ballPalette: ["#DDD6CC", "#CFC6BA", "#AAA299"],
-    ballTextColor: "#333333",
-    // A soft pastel blue for contrast
-    highlightBallColor: "#A6E1FA",
-    highlightBallTextColor: "#333333",
-    arrowBallColor: "#666666",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-  // --------------------------------------------
-  // 15) Minimal Grey & Black
-  // --------------------------------------------
-  {
-    ballPalette: ["#4D4D4D", "#333333", "#666666"],
-    ballTextColor: "#EAEAEA",
-    // A bold red highlight
-    highlightBallColor: "#FF3030",
+    highlightBallColor: "#8B0000",
     highlightBallTextColor: "#FFFFFF",
-    arrowBallColor: "#000000",
+    arrowBallColor: "#A92424",
     arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#121212"
-  },
-  // --------------------------------------------
-  // 16) Sunshine‐Yellow
-  // --------------------------------------------
-  {
-    ballPalette: ["#FEC300", "#FEC300", "#FED553"],
-    ballTextColor: "#FFFFFF",
-    // A hot orange highlight
-    highlightBallColor: "#FF6F00",
-    highlightBallTextColor: "#FFFFFF",
-    arrowBallColor: "#000000",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-  // --------------------------------------------
-  // 17) Teal / Sea‐Green
-  // --------------------------------------------
-  {
-    ballPalette: ["#2EC4B6", "#22B2A5", "#2EC4B6"],
-    ballTextColor: "#FFFFFF",
-    // A soft coral highlight
-    highlightBallColor: "#FFC1BB",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#00494D",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-  // --------------------------------------------
-  // 18) Cool Turquoise / Blue
-  // --------------------------------------------
-  {
-    ballPalette: ["#2DC2F4", "#48D4F7", "#2DC2F4"],
-    ballTextColor: "#FFFFFF",
-    // A golden‐orange accent
-    highlightBallColor: "#FFB43A",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#0F4C75",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFFFFF"
-  },
-
-  // --------------------------------------------
-  // 19) Cozy Cotton Candy
-  // --------------------------------------------
-  {
-    ballPalette: ["#FF9ED4", "#FFAED4", "#F79ED4"],
-    ballTextColor: "#4D4D4D",
-    // A slightly deeper pink to stand out
-    highlightBallColor: "#FF70B2",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#E76F51",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFD3EA"
-  },
-  // --------------------------------------------
-  // 20) Evening Ocean
-  // --------------------------------------------
-  {
-    ballPalette: ["#1B4965", "#1B4965", "#2E5984"],
-    ballTextColor: "#FAFAFA",
-    // A subtle coral highlight
-    highlightBallColor: "#F76F68",
-    highlightBallTextColor: "#FFFFFF",
-    arrowBallColor: "#0A2239",
-    arrowGlyphColor: "#FAFAFA",
-    physicsBackgroundColor: "#1B264F"
-  },
-  // --------------------------------------------
-  // 21) Soft Forest
-  // --------------------------------------------
-  {
-    ballPalette: ["#7C9473", "#8BB174", "#A7C957"],
-    ballTextColor: "#FFFFFF",
-    // A gentle springtime yellow
-    highlightBallColor: "#F4EEA9",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#5A6B50",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#CDE4BC"
-  },
-  // --------------------------------------------
-  // 22) Midnight Purple
-  // --------------------------------------------
-  {
-    ballPalette: ["#4C1F76", "#6E42A6", "#7F4EB3"],
-    ballTextColor: "#EDEDED",
-    // A bright electric teal for contrast
-    highlightBallColor: "#00FFC8",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#241138",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#2F164A"
-  },
-  // --------------------------------------------
-  // 23) Light Stone
-  // --------------------------------------------
-  {
-    ballPalette: ["#BDBDBD", "#A8A8A8", "#DADADA"],
-    ballTextColor: "#333333",
-    // A soft pastel green highlight
-    highlightBallColor: "#BAFFC9",
-    highlightBallTextColor: "#333333",
-    arrowBallColor: "#666666",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#F2F2F2"
-  },
-  // --------------------------------------------
-  // 24) Coral Dream
-  // --------------------------------------------
-  {
-    ballPalette: ["#FF6F59", "#FF8C76", "#FF6F59"],
-    ballTextColor: "#FFFFFF",
-    // A bright aqua highlight
-    highlightBallColor: "#50F3E2",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#7F1D1D",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FFEBE8"
-  },
-  // --------------------------------------------
-  // 25) Pastel Lavender
-  // --------------------------------------------
-  {
-    ballPalette: ["#CAB8FF", "#D5CBFF", "#BFA5FF"],
-    ballTextColor: "#444444",
-    // A minty green highlight
-    highlightBallColor: "#9DFFC8",
-    highlightBallTextColor: "#444444",
-    arrowBallColor: "#7A5CFA",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#EFEAFD"
-  },
-  // --------------------------------------------
-  // 26) Minty Fresh
-  // --------------------------------------------
-  {
-    ballPalette: ["#4DD2A5", "#3BBF9C", "#69D9B8"],
-    ballTextColor: "#FFFFFF",
-    // A lavender highlight for contrast
-    highlightBallColor: "#DAAFFB",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#1B9B7C",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#E6FFF5"
-  },
-  // --------------------------------------------
-  // 27) Bright Lemon
-  // --------------------------------------------
-  {
-    ballPalette: ["#FEEC74", "#FEED82", "#FEEC74"],
-    ballTextColor: "#4D4D4D",
-    // A complementary lavender highlight
-    highlightBallColor: "#D1B1FF",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#D1B10E",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FEFFDA"
-  },
-  // --------------------------------------------
-  // 28) Slate Blue
-  // --------------------------------------------
-  {
-    ballPalette: ["#59618D", "#6E78A2", "#8088B8"],
-    ballTextColor: "#FFFFFF",
-    // A neon pink highlight
-    highlightBallColor: "#FF4FF4",
-    highlightBallTextColor: "#000000",
-    arrowBallColor: "#37415C",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#697184"
+    physicsBackgroundColor: "#FF4800"
   }
 ];
+
+
+
+
+
+
+
+
+
 
 let physicsSimBackgroundColor = [255]; // default value (as RGB)
 
@@ -855,7 +512,7 @@ let enableMotionTextColor = [0];
 let enableMotionText = "Enable Motion";
 
 let enableMotionBackgroundColor = [35];
-let regularBackgroundColor = [254, 207, 0];
+let regularBackgroundColor = [36];
 
 let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
@@ -2177,50 +1834,63 @@ function drawPreviewBallDesktop() {
 }
 
 function updateLayout() {
-  // Calculate the basic scale factor from your original reference dimensions.
+  // 1) Determine the scale factor so the entire 1657×1024 layout fits into the current window:
   scaleFactor = min(windowWidth / refW, windowHeight / refH);
 
-  // Define an expansion factor for the panels.
-  let panelExpansion = 1.2;
-  
-  // Compute the new (expanded) panel dimensions based on the reference sizes.
-  let expandedLeftPanelW = leftPanelRefW * panelExpansion;
-  let expandedLeftPanelH = leftPanelRefH * panelExpansion;
-  let expandedRightPanelW = rightPanelRefW * panelExpansion;
-  let expandedRightPanelH = rightPanelRefH * panelExpansion;
-  
-  // Recalculate the container dimensions so that the layout remains centered.
-  // The container width is determined by: left margin + left panel + gap + right panel + right margin.
-  containerW = (marginLeftRightRef * 2 + expandedLeftPanelW + gapRef + expandedRightPanelW) * scaleFactor;
-  
-  // For height, we use the vertical margins plus the maximum of the two panel heights.
-  containerH = (marginTopBottomRef * 2 + max(expandedLeftPanelH, expandedRightPanelH)) * scaleFactor;
-  
-  // Center the container in the window.
+  // 2) Calculate how large the “container” will be (the bounding box of both panels + margins):
+  containerW = (
+    marginLeftRightRef * 2 +
+    leftPanelRefW +
+    gapRef +
+    rightPanelRefW
+  ) * scaleFactor;
+
+  containerH = (
+    marginTopBottomRef * 2 +
+    max(leftPanelRefH, rightPanelRefH)
+  ) * scaleFactor;
+
+  // 3) Center that container in the browser window
   containerX = (windowWidth - containerW) / 2;
   containerY = (windowHeight - containerH) / 2;
-  
-  // Position the left panel.
+
+  // 4) Position the left panel
   leftPanelX = containerX + marginLeftRightRef * scaleFactor;
   leftPanelY = containerY + marginTopBottomRef * scaleFactor;
-  leftPanelW = expandedLeftPanelW * scaleFactor;
-  leftPanelH = expandedLeftPanelH * scaleFactor;
-  
-  // Position the right panel next to the left panel (with the gap in between).
+  leftPanelW = leftPanelRefW * scaleFactor;
+  leftPanelH = leftPanelRefH * scaleFactor;
+
+  // 5) Position the right panel to the right of the left panel, with 27 px gap
   rightPanelX = leftPanelX + leftPanelW + gapRef * scaleFactor;
-  rightPanelY = containerY + marginTopBottomRef * scaleFactor;
-  rightPanelW = expandedRightPanelW * scaleFactor;
-  rightPanelH = expandedRightPanelH * scaleFactor;
-  
-  // Adjust padding and the position of the phrase inside the right panel.
+  rightPanelY = leftPanelY; // same top margin
+  rightPanelW = rightPanelRefW * scaleFactor;
+  rightPanelH = rightPanelRefH * scaleFactor;
+
+  // 6) If you have text in the right panel, place it with some padding
   phrasePadding = 20 * scaleFactor;
   phraseX = rightPanelX + phrasePadding;
   phraseY = rightPanelY + phrasePadding;
-  
-  // Recalculate the center of the left panel.
+
+  // 7) (Optional) If you need the center of the left panel for physics, etc.
   leftPanelCenterX = leftPanelX + leftPanelW / 2;
   leftPanelCenterY = leftPanelY + leftPanelH / 2;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function createRectWalls(cx, cy, w, h) {
   let group = Composite.create();
   let thick = 100 * scaleFactor;
