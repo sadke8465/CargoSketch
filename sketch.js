@@ -34,7 +34,10 @@ function windowResized() {
   // Update HTML description position and dimensions
   if (htmlDescription) {
     htmlDescription.position(phraseX, phraseY);
-    htmlDescription.style('width', (rightPanelW - 2 * phrasePadding) + 'px');
+    let descriptionWidth = (2 / 3) * rightPanelW - (2 * phrasePadding);
+    htmlDescription.style('width', descriptionWidth + 'px');
+    htmlDescription.style('max-width', descriptionWidth + 'px');
+    htmlDescription.style('line-height', '1.6'); // Adjust for readability
     htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
   }
   updateBackButtonPosition();
@@ -420,7 +423,11 @@ bottomScrollArea.style('height', '300vh');
     htmlDescription.style('overflow', 'hidden');
     htmlDescription.style('background', 'rgba(255,255,255,0.8)');
     htmlDescription.position(phraseX, phraseY);
-    htmlDescription.style('width', (rightPanelW - 2 * phrasePadding) + 'px');
+    let descriptionWidth = (2 / 3) * rightPanelW - (2 * phrasePadding);
+
+    htmlDescription.style('width', descriptionWidth + 'px');
+    htmlDescription.style('max-width', descriptionWidth + 'px');
+    htmlDescription.style('line-height', '1.6'); // Adjust for readability
     htmlDescription.style('opacity', '0');
     htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
     setupScrollHandling();
