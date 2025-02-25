@@ -395,7 +395,7 @@ let enableMotionTextColor = [0];
 let enableMotionText = "Enable Motion";
 
 let enableMotionBackgroundColor = [35];
-let regularBackgroundColor = [255];
+let regularBackgroundColor = [254, 207, 0];
 
 let finalTextBallText = "This site is best viewed\non a desktop device\n\n☺\n\nClick here to contact!";
 
