@@ -1830,131 +1830,110 @@ function drawPhraseDesktop() {
   }
 }
 
-function drawProjectIndex() {
-  let indexTextSize = TEXTSCALE * scaleFactor;
-  textSize(indexTextSize);
+// ───────────────────────────────────────────────────────────────
+// Right-panel project list: layout, hover states, click hit-boxes
+// Margins now match the “Hey, I’m Noam Sadi …” text (phrasePadding)
+// ───────────────────────────────────────────────────────────────
+function drawProjectIndex () {
+
+  /* ── 1.  Metrics & layout positions ─────────────────────── */
+  const fontSize     = TEXTSCALE * scaleFactor;
+  textSize(fontSize);
   textAlign(LEFT, TOP);
-  let arrowInitialOffset = 25 * scaleFactor;
-  let a = textAscent();
-  let d = textDescent();
-  let textHeight = a + d;
-  let padding = 10 * scaleFactor;
-  let baseX = rightPanelX + padding;
-  let lineSpacing = textHeight + (20 * scaleFactor);
-  let hitMargin = 9 * scaleFactor;
-  let totalHeight = projectIndex.length * lineSpacing;
-  let startY = rightPanelY + rightPanelH - padding - totalHeight;
+
+  // use the exact same padding as the intro text block
+  const baseX        = rightPanelX + phrasePadding;      // left margin
+  const a            = textAscent();
+  const d            = textDescent();
+  const textHeight   = a + d;
+  const lineSpacing  = textHeight + (20 * scaleFactor);  // 20 px leading
+  const totalHeight  = projectIndex.length * lineSpacing;
+
+  // bottom margin == phrasePadding, plus baseline correction (+d)
+  const startY = rightPanelY + rightPanelH
+               - phrasePadding
+               - totalHeight
+               + d;                                      // compensate descenders
+
+  /* ── 2.  Pass 1: store per-row positions & hover state ──── */
   let anyHovered = false;
-  
+  const hitMargin = 9 * scaleFactor;                     // bigger click box
+
   for (let i = 0; i < projectIndex.length; i++) {
-    let proj = projectIndex[i];
-    if (proj.offset === undefined) proj.offset = 0;
-    if (proj.alpha === undefined) proj.alpha = 255;
+    const proj = projectIndex[i];
+
+    // cache draw positions so the click handler can reuse them
+    proj.x = baseX + (proj.textOffset || 0);
     proj.y = startY + i * lineSpacing;
-    proj.x = baseX + proj.offset;
-    
-    let glyphW = textWidth(proj.glyph);
-    let nameW = textWidth(proj.name);
-    let tagsStr = " / " + proj.tags.join(" / ");
-    let tagsW = textWidth(tagsStr);
+
+    // glyph / name / tag widths ( cached once per run )
+    const glyphW = textWidth(proj.glyph);
+    const nameW  = textWidth(proj.name);
+    const tagsW  = textWidth(" / " + proj.tags.join(" / "));
     proj.lineWidth = glyphW + 8 + nameW + 8 + tagsW;
-    
-    let boxX = proj.x;
-    let boxY = proj.y - hitMargin;
-    let boxW = proj.lineWidth;
-    let boxH = textHeight + hitMargin * 2;
-    
+
+    // hit-box for hover & click
+    const boxX = proj.x;
+    const boxY = proj.y - hitMargin;
+    const boxW = proj.lineWidth;
+    const boxH = textHeight + hitMargin * 2;
+
     if (proj === activeProject) {
-      proj.hovered = true;
+      proj.hovered = true;                // stay highlighted while active
     } else {
-      proj.hovered = (mouseX >= boxX &&
-                      mouseX <= boxX + boxW &&
-                      mouseY >= boxY &&
-                      mouseY <= boxY + boxH);
+      proj.hovered = mouseX >= boxX && mouseX <= boxX + boxW &&
+                     mouseY >= boxY && mouseY <= boxY + boxH;
     }
+    anyHovered = anyHovered || proj.hovered;
+  }
+
+  /* ── 3.  Pass 2: ease offsets & alphas toward targets ───── */
+  for (const proj of projectIndex) {
+    const isHover = proj.hovered && !galleryTransitionActive;
+    const tText   = isHover ?  50 :   0;   // slide text right
+    const tArrow  = isHover ?  25 :   0;   // slide arrow left
+    const aGlyph  = isHover ? 255 :  51;   // opacity changes
+    const aName   = isHover ? 255 :  51;
+    const aTags   = isHover ? 255 :  51;
+
+    proj.textOffset  = lerp(proj.textOffset  || 0, tText,  0.2);
+    proj.arrowOffset = lerp(proj.arrowOffset || 0, tArrow, 0.2);
+    proj.glyphAlpha  = lerp(proj.glyphAlpha  || 255, aGlyph, 0.2);
+    proj.nameAlpha   = lerp(proj.nameAlpha   || 255, aName,  0.2);
+    proj.tagsAlpha   = lerp(proj.tagsAlpha   ||  51, aTags,  0.2);
+  }
+
+  /* ── 4.  Pass 3: draw every row ─────────────────────────── */
+  for (const proj of projectIndex) {
+
+    // hover arrow (draw *before* text to sit on same baseline)
     if (proj.hovered) {
-      anyHovered = true;
-    }
-  }
-  
-  let actualIndexHover = false;
-  for (let proj of projectIndex) {
-    let hm = 9 * scaleFactor;
-    let bx = proj.x;
-    let by = proj.y - hm;
-    let bw = proj.lineWidth;
-    let localTextHeight = textAscent() + textDescent();
-    let bh = localTextHeight + hm * 2;
-    if (
-      mouseX >= bx &&
-      mouseX <= bx + bw &&
-      mouseY >= by &&
-      mouseY <= by + bh
-    ) {
-      actualIndexHover = true;
-      break;
-    }
-  }
-  
-  if (mouseX >= rightPanelX && mouseX <= rightPanelX + rightPanelW) {
-    if (actualIndexHover) {
-      cursor(HAND);
-    } else {
-      cursor(ARROW);
-    }
-  }
-  
-  for (let proj of projectIndex) {
-    if (proj.textOffset === undefined) proj.textOffset = 0;
-    if (proj.arrowOffset === undefined) proj.arrowOffset = 0;
-    let targetTextOffset = 0;
-    let targetArrowOffset = 0;
-    let targetGlyphAlpha = 255;
-    let targetNameAlpha = 255;
-    let targetTagsAlpha = 51;
-    if (anyHovered) {
-      if (proj.hovered) {
-        targetGlyphAlpha = 255;
-        targetNameAlpha = 255;
-        targetTagsAlpha = 255;
-        targetTextOffset = 50;
-        targetArrowOffset = 25;
-      } else {
-        targetGlyphAlpha = 51;
-        targetNameAlpha = 51;
-        targetTagsAlpha = 51;
-        targetTextOffset = 0;
-        targetArrowOffset = 0;
-      }
-    }
-    proj.textOffset = lerp(proj.textOffset, targetTextOffset, 0.2);
-    proj.arrowOffset = lerp(proj.arrowOffset, targetArrowOffset, 0.2);
-    proj.glyphAlpha = lerp(proj.glyphAlpha || 255, targetGlyphAlpha, 0.2);
-    proj.nameAlpha = lerp(proj.nameAlpha || 255, targetNameAlpha, 0.2);
-    proj.tagsAlpha = lerp(proj.tagsAlpha || 51, targetTagsAlpha, 0.2);
-  }
-  
-  for (let proj of projectIndex) {
-    let lineX = baseX + proj.textOffset;
-    let lineY = proj.y;
-    if (proj.hovered) {
-      let arrow = "→  ";
-      let arrowW = textWidth(arrow);
-      let arrowX = (baseX + arrowInitialOffset) + proj.arrowOffset - arrowW;
+      const arrow = "→  ";
+      const arrowX = baseX + 25 * scaleFactor + proj.arrowOffset - textWidth(arrow);
       fill(0, 255);
       text(arrow, arrowX, proj.y);
     }
+
+    // project glyph
     fill(0, proj.glyphAlpha);
-    text(proj.glyph, lineX, lineY);
-    let glyphW = textWidth(proj.glyph);
-    let xAfterGlyph = lineX + glyphW + 8;
+    text(proj.glyph, proj.x, proj.y);
+
+    // project name
+    const glyphW = textWidth(proj.glyph);
+    const nameX = proj.x + glyphW + 8;
     fill(0, proj.nameAlpha);
-    text(proj.name, xAfterGlyph, lineY);
-    let nameW = textWidth(proj.name);
-    let xAfterName = xAfterGlyph + nameW + 8;
-    let tagsStr = " / " + proj.tags.join(" / ");
+    text(proj.name, nameX, proj.y);
+
+    // tags
+    const nameW = textWidth(proj.name);
+    const tagsX = nameX + nameW + 8;
     fill(0, proj.tagsAlpha);
-    text(tagsStr, xAfterName, lineY);
+    text(" / " + proj.tags.join(" / "), tagsX, proj.y);
+  }
+
+  /* ── 5.  Cursor feedback inside right panel ─────────────── */
+  if (mouseX >= rightPanelX && mouseX <= rightPanelX + rightPanelW) {
+    cursor(anyHovered ? HAND : ARROW);
   }
 }
 
