@@ -15,6 +15,18 @@ function hexToRgb(hex) {
   return [r, g, b];
 }
 
+function hslToHex(h, s, l) {
+  // Convert HSL to RGB first
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 
 
 function getRandomBallColor() {
@@ -336,21 +348,17 @@ let arrowEaseDuration = 0.5;
 
 
 
-let colorSchemes = [
-  // --------------------------------------------
-  // 1) Blueberry Lime
-  // --------------------------------------------
-  {
-    ballPalette: ["#FFFFFF"],
-    ballTextColor: "#292929",
-    // A bright chartreuse highlight that fits with the lime
-    highlightBallColor: "#8B0000",
-    highlightBallTextColor: "#FFFFFF",
-    arrowBallColor: "#A92424",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FF4800"
-  }
-];
+let defaultColorScheme = {
+  ballPalette: ["#BDBDBD", "#A8A8A8", "#DADADA"],
+  ballTextColor: "#232323",
+  highlightBallColor: "#232323",
+  highlightBallTextColor: "#FFFFFF",
+  arrowBallColor: "#5B5B5B",
+  arrowGlyphColor: "#FFFFFF",
+  physicsBackgroundColor: "#FFFFFF"
+};
+
+let usingDefaultScheme = true;
 
 
 
@@ -382,6 +390,27 @@ function applyColorScheme(scheme) {
   for (let lb of desktopBalls) {
     lb.ballColor = getRandomBallColor();
   }
+}
+
+function generateRandomColorScheme() {
+  const baseHue = random(0, 360);
+  const accentHue = (baseHue + 180 + random(-20, 20)) % 360;
+
+  const ballPalette = [
+    hslToHex(baseHue, 50, 65),
+    hslToHex((baseHue + random(-15, 15)) % 360, 45, 55),
+    hslToHex((baseHue + random(15, 30)) % 360, 55, 45)
+  ];
+
+  return {
+    ballPalette,
+    ballTextColor: "#292929",
+    highlightBallColor: hslToHex(accentHue, 60, 50),
+    highlightBallTextColor: "#FFFFFF",
+    arrowBallColor: hslToHex(accentHue, 55, 55),
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: hslToHex(baseHue, 30, 92)
+  };
 }
 
 
@@ -492,6 +521,8 @@ function setup() {
   MOBILE_MODE = isMobileDevice();
   console.log("User agent:", navigator.userAgent);
   console.log("Detected mobile?", MOBILE_MODE);
+
+  applyColorScheme(defaultColorScheme);
   
   if (MOBILE_MODE) {
     setupMobile();
@@ -1604,11 +1635,13 @@ function mousePressed() {
       }
     });
     
-    // Also, pick and apply a random color scheme as before:
-    let randomIndex = Math.floor(random(0, colorSchemes.length));
-    let chosenScheme = colorSchemes[randomIndex];
-    applyColorScheme(chosenScheme);
-    console.log("Applied new color scheme:", chosenScheme);
+    if (usingDefaultScheme) {
+      const scheme = generateRandomColorScheme();
+      applyColorScheme(scheme);
+    } else {
+      applyColorScheme(defaultColorScheme);
+    }
+    usingDefaultScheme = !usingDefaultScheme;
     return; // Skip further mouse interactions
   }
   
