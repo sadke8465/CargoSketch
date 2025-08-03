@@ -33,80 +33,95 @@ function getRandomBallColor() {
   let randomIndex = Math.floor(random(0, ballColorPalette.length));
   return hexToRgb(ballColorPalette[randomIndex]);
 }
+// --------------------------------------------------------------------------
+// LAYOUT & RESIZE HELPERS
+// --------------------------------------------------------------------------
 
+function updateGalleryLayout() {
+  if (!htmlGallery) return;
 
+  // Update gallery container
+  htmlGallery.style('left', leftPanelX + 'px');
+  htmlGallery.style('width', leftPanelW + 'px');
+  htmlGallery.style('height', '100vh');
+
+  // Update content container position to match panel Y position
+  const contentContainer = document.getElementById('galleryContent');
+  if (contentContainer) {
+    contentContainer.style.marginTop = leftPanelY + 'px';
+  }
+
+  // Ensure gallery items stay within bounds
+  const galleryItems = htmlGallery.elt.getElementsByClassName('gallery-item');
+  for (let item of galleryItems) {
+    item.style.maxWidth = '100%';
+    item.style.height = 'auto';
+  }
+
+  // Re-calculate scroll position to maintain relative position
+  const scrollPercentage = htmlGallery.elt.scrollTop / htmlGallery.elt.scrollHeight;
+  const newScrollPosition = scrollPercentage * htmlGallery.elt.scrollHeight;
+  htmlGallery.elt.scrollTop = newScrollPosition;
+}
+
+function updateDescriptionLayout() {
+  if (!htmlDescription) return;
+
+  htmlDescription.position(phraseX, phraseY);
+  let descriptionWidth = (2 / 3) * rightPanelW - (2 * phrasePadding);
+  htmlDescription.style('width', descriptionWidth + 'px');
+  htmlDescription.style('max-width', descriptionWidth + 'px');
+  htmlDescription.style('line-height', '1.6'); // Adjust for readability
+  htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
+}
+
+function updatePhysicsSimulation() {
+  if (MOBILE_MODE) return;
+
+  // Remove and recreate the static walls
+  Composite.remove(desktopWorld, wallComposite);
+  wallComposite = createRectWalls(leftPanelCenterX, leftPanelCenterY, leftPanelW, leftPanelH);
+  World.add(desktopWorld, wallComposite);
+
+  // Remove the old center arrow ball and create a new one with updated scale
+  Composite.remove(desktopWorld, centerArrowBall.body);
+  centerArrowBall = new CenterArrowBall(leftPanelCenterX, leftPanelCenterY, 40 * scaleFactor);
+  World.add(desktopWorld, centerArrowBall.body);
+
+  // Update preview ball position
+  Matter.Body.setPosition(previewBody, {
+    x: mouseX - ghostBallOffset.x,
+    y: mouseY - ghostBallOffset.y
+  });
+}
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  updateLayout();  // This updates all your panel positions and dimensions
-
-  // Update HTML gallery dimensions and position
-  if (htmlGallery) {
-    // Update gallery container
-    htmlGallery.style('left', leftPanelX + 'px');
-    htmlGallery.style('width', leftPanelW + 'px');
-    htmlGallery.style('height', '100vh');
-    
-    // Update content container position to match panel Y position
-    const contentContainer = document.getElementById('galleryContent');
-    if (contentContainer) {
-      contentContainer.style.marginTop = leftPanelY + 'px';
-    }
-    
-    // Ensure gallery items stay within bounds
-    const galleryItems = htmlGallery.elt.getElementsByClassName('gallery-item');
-    for (let item of galleryItems) {
-      item.style.maxWidth = '100%';
-      item.style.height = 'auto';
-    }
-
-    // Re-calculate scroll position to maintain relative position
-    const scrollPercentage = htmlGallery.elt.scrollTop / htmlGallery.elt.scrollHeight;
-    const newScrollPosition = scrollPercentage * htmlGallery.elt.scrollHeight;
-    htmlGallery.elt.scrollTop = newScrollPosition;
-  }
-
-  // Update HTML description position and dimensions
-  if (htmlDescription) {
-    htmlDescription.position(phraseX, phraseY);
-    let descriptionWidth = (2 / 3) * rightPanelW - (2 * phrasePadding);
-    htmlDescription.style('width', descriptionWidth + 'px');
-    htmlDescription.style('max-width', descriptionWidth + 'px');
-    htmlDescription.style('line-height', '1.6'); // Adjust for readability
-    htmlDescription.style('font-size', (TEXTSCALE * scaleFactor) + 'px');
-  }
+  updateLayout(); // This updates all your panel positions and dimensions
+  updateGalleryLayout();
+  updateDescriptionLayout();
   updateBackButtonPosition();
-
-  // Update physics simulation if in physics mode
-  if (!MOBILE_MODE) {
-    // Remove and recreate the static walls
-    Composite.remove(desktopWorld, wallComposite);
-    wallComposite = createRectWalls(leftPanelCenterX, leftPanelCenterY, leftPanelW, leftPanelH);
-    World.add(desktopWorld, wallComposite);
-    
-    // Remove the old center arrow ball and create a new one with updated scale
-    Composite.remove(desktopWorld, centerArrowBall.body);
-    centerArrowBall = new CenterArrowBall(leftPanelCenterX, leftPanelCenterY, 40 * scaleFactor);
-    World.add(desktopWorld, centerArrowBall.body);
-    
-    // Update preview ball position
-    Matter.Body.setPosition(previewBody, { 
-      x: mouseX - ghostBallOffset.x, 
-      y: mouseY - ghostBallOffset.y 
-    });
-  }
+  updatePhysicsSimulation();
 }
 
 
-// 1) Detect if mobile device (simple check)
+// --------------------------------------------------------------------------
+// DEVICE & MATH UTILITIES
+// --------------------------------------------------------------------------
+
+// Detect if mobile device (simple check)
 function isMobileDevice() {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone|Opera Mini|Mobile/i.test(navigator.userAgent);
 }
 
-// 2) Easing functions
+// Easing function for description fade (in/out sine)
+function easeInOutSine(t) {
+  return -(cos(PI * t) - 1) / 2;
+}
+
+// Easing function for gallery scroll transition (in/out quint)
 function easeInOutQuint(t) {
-  if (t < 0.5) return 2 * t * t;
-  return -1 + (4 - 2 * t) * t;
+  return t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 }
 
 function lerpAngle(a0, a1, t) {
@@ -116,17 +131,7 @@ function lerpAngle(a0, a1, t) {
   return a0 + diff * t;
 }
 
-// Easing function for description fade (in/out sine)
-function easeInOutSine(t) {
-  return -(cos(PI * t) - 1) / 2;
-}
-
-// NEW: Easing function for gallery scroll transition (in/out quint)
-function easeInOutQuint(t) {
-  return t < 0.5 ? 16 * t*t*t*t*t : 1 - Math.pow(-2 * t + 2, 5) / 2;
-}
-
-// 3) Substring finder for desktop highlight
+// Substring finder for desktop highlight
 function findExactSubstringIndices(fullText, sub) {
   let result = [];
   let matchIndex = 0;
@@ -143,10 +148,12 @@ function findExactSubstringIndices(fullText, sub) {
   return result;
 }
 
-// 4) Check if point is inside the interactive area (desktop)
+// Check if point is inside the interactive area (desktop)
 function isInsideInteractiveArea(mx, my) {
-  return (mx >= leftPanelX && mx <= leftPanelX + leftPanelW &&
-          my >= leftPanelY && my <= leftPanelY + leftPanelH);
+  return (
+    mx >= leftPanelX && mx <= leftPanelX + leftPanelW &&
+    my >= leftPanelY && my <= leftPanelY + leftPanelH
+  );
 }
 
 // --------------------------------------------------------------------------
