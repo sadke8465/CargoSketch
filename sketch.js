@@ -15,6 +15,18 @@ function hexToRgb(hex) {
   return [r, g, b];
 }
 
+function hslToHex(h, s, l) {
+  // Convert HSL to RGB first
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
 
 
 function getRandomBallColor() {
@@ -203,10 +215,7 @@ let scrollOffset = 0;           // Vertical scroll offset for the gallery
 
 
 
-let ballColorPalette = [
-    "BDBDBD", "#A8A8A8", "#DADADA",
-
-];
+let ballColorPalette = ["#BDBDBD", "#A8A8A8", "#DADADA"];
 
 
 
@@ -336,21 +345,17 @@ let arrowEaseDuration = 0.5;
 
 
 
-let colorSchemes = [
-  // --------------------------------------------
-  // 1) Blueberry Lime
-  // --------------------------------------------
-  {
-    ballPalette: ["#FFFFFF"],
-    ballTextColor: "#292929",
-    // A bright chartreuse highlight that fits with the lime
-    highlightBallColor: "#8B0000",
-    highlightBallTextColor: "#FFFFFF",
-    arrowBallColor: "#A92424",
-    arrowGlyphColor: "#FFFFFF",
-    physicsBackgroundColor: "#FF4800"
-  }
-];
+let defaultColorScheme = {
+  ballPalette: ["#BDBDBD", "#A8A8A8", "#DADADA"],
+  ballTextColor: "#232323",
+  highlightBallColor: "#232323",
+  highlightBallTextColor: "#FFFFFF",
+  arrowBallColor: "#5B5B5B",
+  arrowGlyphColor: "#FFFFFF",
+  physicsBackgroundColor: "#FFFFFF"
+};
+
+let usingDefaultScheme = true;
 
 
 
@@ -382,6 +387,42 @@ function applyColorScheme(scheme) {
   for (let lb of desktopBalls) {
     lb.ballColor = getRandomBallColor();
   }
+}
+
+let lastRandomBaseHue = null;
+
+function generateRandomColorScheme() {
+  // Ensure each new palette's base hue is far from the previous one
+  function hueDistance(a, b) {
+    const diff = Math.abs(a - b);
+    return Math.min(diff, 360 - diff);
+  }
+
+  let baseHue;
+  do {
+    baseHue = random(0, 360);
+  } while (lastRandomBaseHue !== null && hueDistance(baseHue, lastRandomBaseHue) < 90);
+  lastRandomBaseHue = baseHue;
+
+  const hue2 = (baseHue + random(100, 140)) % 360;
+  const hue3 = (baseHue + random(200, 260)) % 360;
+  const accentHue = (baseHue + random(150, 210)) % 360;
+
+  const ballPalette = [
+    hslToHex(baseHue, random(40, 70), random(45, 65)),
+    hslToHex(hue2, random(40, 70), random(45, 65)),
+    hslToHex(hue3, random(40, 70), random(45, 65))
+  ];
+
+  return {
+    ballPalette,
+    ballTextColor: "#292929",
+    highlightBallColor: hslToHex(accentHue, random(55, 75), random(40, 60)),
+    highlightBallTextColor: "#FFFFFF",
+    arrowBallColor: hslToHex(accentHue, random(55, 75), random(45, 65)),
+    arrowGlyphColor: "#FFFFFF",
+    physicsBackgroundColor: hslToHex(baseHue, random(20, 40), random(90, 97))
+  };
 }
 
 
@@ -492,6 +533,8 @@ function setup() {
   MOBILE_MODE = isMobileDevice();
   console.log("User agent:", navigator.userAgent);
   console.log("Detected mobile?", MOBILE_MODE);
+
+  applyColorScheme(defaultColorScheme);
   
   if (MOBILE_MODE) {
     setupMobile();
@@ -1604,11 +1647,13 @@ function mousePressed() {
       }
     });
     
-    // Also, pick and apply a random color scheme as before:
-    let randomIndex = Math.floor(random(0, colorSchemes.length));
-    let chosenScheme = colorSchemes[randomIndex];
-    applyColorScheme(chosenScheme);
-    console.log("Applied new color scheme:", chosenScheme);
+    if (usingDefaultScheme) {
+      const scheme = generateRandomColorScheme();
+      applyColorScheme(scheme);
+    } else {
+      applyColorScheme(defaultColorScheme);
+    }
+    usingDefaultScheme = !usingDefaultScheme;
     return; // Skip further mouse interactions
   }
   
