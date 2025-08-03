@@ -104,9 +104,9 @@ function isMobileDevice() {
 }
 
 // 2) Easing functions
+// Quintic easing for smooth acceleration and deceleration
 function easeInOutQuint(t) {
-  if (t < 0.5) return 2 * t * t;
-  return -1 + (4 - 2 * t) * t;
+  return t < 0.5 ? 16 * t*t*t*t*t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 }
 
 function lerpAngle(a0, a1, t) {
@@ -119,11 +119,6 @@ function lerpAngle(a0, a1, t) {
 // Easing function for description fade (in/out sine)
 function easeInOutSine(t) {
   return -(cos(PI * t) - 1) / 2;
-}
-
-// NEW: Easing function for gallery scroll transition (in/out quint)
-function easeInOutQuint(t) {
-  return t < 0.5 ? 16 * t*t*t*t*t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 }
 
 // 3) Substring finder for desktop highlight
